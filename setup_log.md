@@ -31,3 +31,5 @@ Software:
       System Integrity Protection: Enabled
       Time since boot: 6 days, 18 hours, 55 minutes
 
+ 13M	/Users/ianreitsma/orchard-data/wikitext-2
+57f3eb280cfe78d8cebe3aa76d7416607845416e22464dd9709ccb487f8d7b92  /Users/ianreitsma/orchard-data/wikitext-2/wiki.train.tokens
