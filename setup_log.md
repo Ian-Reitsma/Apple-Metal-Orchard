@@ -33,3 +33,5 @@ Software:
 
  13M	/Users/ianreitsma/orchard-data/wikitext-2
 57f3eb280cfe78d8cebe3aa76d7416607845416e22464dd9709ccb487f8d7b92  /Users/ianreitsma/orchard-data/wikitext-2/wiki.train.tokens
+ 10M	/Users/ianreitsma/orchard-data/wikitext-2/wiki.train.tokens
+57f3eb280cfe78d8cebe3aa76d7416607845416e22464dd9709ccb487f8d7b92  /Users/ianreitsma/orchard-data/wikitext-2/wiki.train.tokens
