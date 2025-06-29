@@ -66,7 +66,8 @@ trap 'kill $PM_PID 2>/dev/null || true' EXIT INT TERM
 export POW_FILE  # consumed by orchard_bench_v0.8.py
 
 # 5 run benchmark, capture exit code (PIPESTATUS[0] = python)
-python3 "$PY" --data "$data_path" --tag "$tag" "${py_args[@]}" | tee "$LOG_FILE"
+python3 "$PY" --data "$data_path" --tag "$tag" "${py_args[@]}" 2>&1 | tee "$LOG_FILE"
+
 exit_code=${PIPESTATUS[0]}
 
 exit "$exit_code"
