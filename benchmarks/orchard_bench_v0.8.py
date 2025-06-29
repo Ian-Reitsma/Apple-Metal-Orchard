@@ -155,17 +155,17 @@ for step in range(args.steps):
             max_grad = max(max_grad, g)
     optimizer.step()
     optimizer.zero_grad()
-    # ── heartbeat ──
-    hb = int(os.getenv("PROGRESS_EVERY", "10"))      # default: every 10 steps
-    if (step + 1) % hb == 0 or step == args.steps - 1:
-        elapsed = time.time() - start_all
+    # ── heartbeat every N seconds ─────
+    hb_sec = int(os.getenv("PROGRESS_SEC", "10"))
+    now = time.time()
+    if now - globals().get("_last_hb", 0) >= hb_sec or step == args.steps - 1:
+        _last_hb = now                # update global sentinel
+        pct = (step + 1) / args.steps
+        tps = ids.numel() * (step + 1) / (now - start_all)
         print(f"[orchard][{args.tag}] step {step+1}/{args.steps} "
-              f"({(step+1)/args.steps:5.1%})  "
-              f"wall={elapsed:6.1f}s  tps≈{(ids.numel()*(step+1))/elapsed:7.1f}",
+              f"({pct:5.1%})  wall={now - start_all:6.1f}s  tps≈{tps:7.1f}",
               file=sys.stderr, flush=True)
-    train_s+=time.time()-t0
-    if args.steps<=300 or step%5==0:
-        elapsed=time.time()-start_all; timeline.append({'s':step+1,'tps':ids.numel()*(step+1)/elapsed,'elap':elapsed})
+
 
 # Copy audit
 expected = args.bs * args.seq * ids.element_size() / 1e6 * args.steps
