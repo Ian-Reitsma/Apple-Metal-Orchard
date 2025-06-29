@@ -153,7 +153,17 @@ for step in range(args.steps):
             g = p.grad.detach().abs().max().item()
             if not np.isfinite(g): raise RuntimeError("NaN/Inf gradient")
             max_grad = max(max_grad, g)
-    optimizer.step(); optimizer.zero_grad(); train_s+=time.time()-t0
+    optimizer.step()
+    optimizer.zero_grad()
+    # ── heartbeat ──
+    hb = int(os.getenv("PROGRESS_EVERY", "10"))      # default: every 10 steps
+    if (step + 1) % hb == 0 or step == args.steps - 1:
+        elapsed = time.time() - start_all
+        print(f"[orchard][{args.tag}] step {step+1}/{args.steps} "
+              f"({(step+1)/args.steps:5.1%})  "
+              f"wall={elapsed:6.1f}s  tps≈{(ids.numel()*(step+1))/elapsed:7.1f}",
+              file=sys.stderr, flush=True)
+    train_s+=time.time()-t0
     if args.steps<=300 or step%5==0:
         elapsed=time.time()-start_all; timeline.append({'s':step+1,'tps':ids.numel()*(step+1)/elapsed,'elap':elapsed})
 

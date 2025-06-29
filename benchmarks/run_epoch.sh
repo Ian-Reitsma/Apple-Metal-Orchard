@@ -47,10 +47,22 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ------ quick-check preset --------------------------------------------------
+if [[ "${QUICK_CHECK:-0}" == "1" ]]; then
+  py_args+=( --bs 4 --seq 256 --steps 40 )
+  export PROGRESS_EVERY=5          # more frequent ticker
+  tag="${tag}_qc"
+  echo ">> QUICK-CHECK mode: bs=4 seq=256 steps=40 (≈15-min run)" >&2
+fi
+# ---------------------------------------------------------------------------
+
+
 if [[ -z "$tag" ]]; then
   echo "run_epoch.sh: --tag is required" >&2
   exit 2
 fi
+
+
 
 # 3 construct run‑scoped filenames
 _ts=$(date +%Y%m%d-%H%M%S)
