@@ -1,0 +1,2 @@
+e036b69162f349edcc4f5d14b31e837ec3ce67738ff188c228efeeaa9ea7cb2e  kernel_lib/flashattn/libflash_attn.dylib
+Source: PhilipTurner/metal-flash-attention @8671cdd via SwiftPM dynamic library
