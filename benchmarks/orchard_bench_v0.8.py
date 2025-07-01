@@ -25,6 +25,10 @@ try:
 except ImportError:
     yaml = None  # config optional
 
+import torch
+print("MPS available:", torch.backends.mps.is_available(),
+      "MPS built:", torch.backends.mps.is_built(), file=sys.stderr)
+
 # ── Environment / path hygiene ───────────────────────────────────────────────
 PROJECT_ROOT = pathlib.Path(os.getenv("ORCHARD_ROOT", "~/projects/orchard")).expanduser().resolve()
 SETUP_LOG    = PROJECT_ROOT / "setup_log.md"
