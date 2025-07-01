@@ -1,0 +1,19 @@
+/Users/ianreitsma/projects/orchard/orchard-env/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+[orchard][ref_no_flash_mac2-100-4_bf16] step 1/100 ( 1.0%)  wall=   1.9s  tps≈  527.5
+[orchard][ref_no_flash_mac2-100-4_bf16] step 8/100 ( 8.0%)  wall=  12.2s  tps≈  671.2
+[orchard][ref_no_flash_mac2-100-4_bf16] step 15/100 (15.0%)  wall=  22.2s  tps≈  691.6
+[orchard][ref_no_flash_mac2-100-4_bf16] step 23/100 (23.0%)  wall=  33.6s  tps≈  700.8
+[orchard][ref_no_flash_mac2-100-4_bf16] step 31/100 (31.0%)  wall=  45.0s  tps≈  705.9
+[orchard][ref_no_flash_mac2-100-4_bf16] step 39/100 (39.0%)  wall=  56.3s  tps≈  709.1
+[orchard][ref_no_flash_mac2-100-4_bf16] step 47/100 (47.0%)  wall=  67.7s  tps≈  710.9
+[orchard][ref_no_flash_mac2-100-4_bf16] step 55/100 (55.0%)  wall=  79.0s  tps≈  712.7
+[orchard][ref_no_flash_mac2-100-4_bf16] step 62/100 (62.0%)  wall=  89.1s  tps≈  712.6
+[orchard][ref_no_flash_mac2-100-4_bf16] step 69/100 (69.0%)  wall=  99.5s  tps≈  710.5
+[orchard][ref_no_flash_mac2-100-4_bf16] step 76/100 (76.0%)  wall= 109.8s  tps≈  708.5
+[orchard][ref_no_flash_mac2-100-4_bf16] step 83/100 (83.0%)  wall= 119.9s  tps≈  708.7
+[orchard][ref_no_flash_mac2-100-4_bf16] step 90/100 (90.0%)  wall= 130.3s  tps≈  707.4
+[orchard][ref_no_flash_mac2-100-4_bf16] step 97/100 (97.0%)  wall= 140.7s  tps≈  705.7
+[orchard][ref_no_flash_mac2-100-4_bf16] step 100/100 (100.0%)  wall= 145.4s  tps≈  704.3
+JSON:{"schema": "orchard_bench_v1", "tag": "ref_no_flash_mac2-100-4_bf16", "commit": "34969e4", "dataset_sha": "57f3eb280cfe78d8cebe3aa76d7416607845416e22464dd9709ccb487f8d7b92", "batch": 2, "seq": 512, "micro_steps": 100, "total_tokens": 102400, "throughput_tps": 702.948502382917, "tokenize_s": 0.4908, "copy_s": 2.2333, "copy_mb_s": 0.37, "train_s": 0.0, "host_to_gpu_mb": 0.82, "avg_loss_stub": 0.8721955718286335, "max_grad": 159.0, "dtype": "torch.bfloat16", "bf16": true, "flash": {"enabled": false}, "metal_ver": "unknown", "seed": 42, "timeline": [], "avg_gpu_w": 5487.831081081081, "avg_gpu_temp": null}

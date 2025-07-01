@@ -1,0 +1,22 @@
+/Users/ianreitsma/projects/orchard/orchard-env/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+MPS available: True MPS built: True
+[orchard] FlashAttention loaded (SHA e036b691…)
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 1/100 ( 1.0%)  wall=   1.9s  tps≈  534.3
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 8/100 ( 8.0%)  wall=  12.7s  tps≈  647.1
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 15/100 (15.0%)  wall=  23.7s  tps≈  647.1
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 22/100 (22.0%)  wall=  34.4s  tps≈  654.8
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 29/100 (29.0%)  wall=  44.7s  tps≈  664.9
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 36/100 (36.0%)  wall=  55.3s  tps≈  667.2
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 43/100 (43.0%)  wall=  65.6s  tps≈  671.0
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 50/100 (50.0%)  wall=  76.5s  tps≈  669.2
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 57/100 (57.0%)  wall=  87.7s  tps≈  665.7
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 64/100 (64.0%)  wall=  98.7s  tps≈  664.2
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 71/100 (71.0%)  wall= 109.4s  tps≈  664.7
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 78/100 (78.0%)  wall= 120.5s  tps≈  663.1
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 85/100 (85.0%)  wall= 131.2s  tps≈  663.2
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 92/100 (92.0%)  wall= 142.8s  tps≈  659.9
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 99/100 (99.0%)  wall= 153.9s  tps≈  658.6
+[orchard][ref_flash_enabled_mac2-3-100_bf16] step 100/100 (100.0%)  wall= 155.6s  tps≈  658.1
+JSON:{"schema": "orchard_bench_v1", "tag": "ref_flash_enabled_mac2-3-100_bf16", "commit": "d512501", "dataset_sha": "57f3eb280cfe78d8cebe3aa76d7416607845416e22464dd9709ccb487f8d7b92", "batch": 2, "seq": 512, "micro_steps": 100, "total_tokens": 102400, "throughput_tps": 656.9517577408882, "tokenize_s": 0.6787, "copy_s": 2.2831, "copy_mb_s": 0.36, "train_s": 0.0, "host_to_gpu_mb": 0.82, "avg_loss_stub": 0.8721955718286335, "max_grad": 159.0, "dtype": "torch.bfloat16", "bf16": true, "flash": {"enabled": true, "sha": "e036b69162f349edcc4f5d14b31e837ec3ce67738ff188c228efeeaa9ea7cb2e", "built": "2025-07-01T02:55:39", "metal": "unknown"}, "metal_ver": "unknown", "seed": 42, "timeline": [], "avg_gpu_w": 5279.06329113924, "avg_gpu_temp": null}
