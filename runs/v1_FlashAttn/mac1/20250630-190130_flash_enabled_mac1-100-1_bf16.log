@@ -1,0 +1,20 @@
+/Users/ianreitsma/projects/orchard/orchard-env/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+[orchard] FlashAttention loaded (SHA e036b691…)
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+[orchard][flash_enabled_mac1-100-1_bf16] step 1/100 ( 1.0%)  wall=   1.9s  tps≈  535.4
+[orchard][flash_enabled_mac1-100-1_bf16] step 8/100 ( 8.0%)  wall=  12.3s  tps≈  667.6
+[orchard][flash_enabled_mac1-100-1_bf16] step 15/100 (15.0%)  wall=  22.3s  tps≈  688.0
+[orchard][flash_enabled_mac1-100-1_bf16] step 22/100 (22.0%)  wall=  32.6s  tps≈  691.3
+[orchard][flash_enabled_mac1-100-1_bf16] step 29/100 (29.0%)  wall=  42.6s  tps≈  696.9
+[orchard][flash_enabled_mac1-100-1_bf16] step 36/100 (36.0%)  wall=  52.7s  tps≈  699.7
+[orchard][flash_enabled_mac1-100-1_bf16] step 43/100 (43.0%)  wall=  62.7s  tps≈  701.7
+[orchard][flash_enabled_mac1-100-1_bf16] step 50/100 (50.0%)  wall=  72.8s  tps≈  703.1
+[orchard][flash_enabled_mac1-100-1_bf16] step 57/100 (57.0%)  wall=  82.8s  tps≈  704.7
+[orchard][flash_enabled_mac1-100-1_bf16] step 64/100 (64.0%)  wall=  92.9s  tps≈  705.3
+[orchard][flash_enabled_mac1-100-1_bf16] step 71/100 (71.0%)  wall= 103.0s  tps≈  706.2
+[orchard][flash_enabled_mac1-100-1_bf16] step 78/100 (78.0%)  wall= 113.0s  tps≈  706.8
+[orchard][flash_enabled_mac1-100-1_bf16] step 85/100 (85.0%)  wall= 123.1s  tps≈  707.3
+[orchard][flash_enabled_mac1-100-1_bf16] step 93/100 (93.0%)  wall= 134.5s  tps≈  708.1
+[orchard][flash_enabled_mac1-100-1_bf16] step 100/100 (100.0%)  wall= 144.6s  tps≈  708.2
+JSON:{"schema": "orchard_bench_v1", "tag": "flash_enabled_mac1-100-1_bf16", "commit": "acca622", "dataset_sha": "57f3eb280cfe78d8cebe3aa76d7416607845416e22464dd9709ccb487f8d7b92", "batch": 2, "seq": 512, "micro_steps": 100, "total_tokens": 102400, "throughput_tps": 707.064169920387, "tokenize_s": 0.2344, "copy_s": 2.872, "copy_mb_s": 0.29, "train_s": 0.0, "host_to_gpu_mb": 0.82, "avg_loss_stub": 0.8721076791360974, "max_grad": 159.0, "dtype": "torch.bfloat16", "bf16": true, "flash": {"enabled": true, "sha": "e036b69162f349edcc4f5d14b31e837ec3ce67738ff188c228efeeaa9ea7cb2e", "built": "2025-06-30T22:32:42", "metal": "32023.620"}, "metal_ver": "32023.620", "seed": 42, "timeline": [], "avg_gpu_w": 5441.858108108108, "avg_gpu_temp": null}
