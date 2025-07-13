@@ -18,6 +18,7 @@ import os, sys, json, time, hashlib, argparse, random, re, subprocess, pathlib, 
 import numpy as np
 import torch
 import mlx  # MLX kernels first – forces Apple‑patched runtime
+import orchard_patch_flash 
 from transformers import GPT2TokenizerFast, GPT2LMHeadModel
 
 try:
@@ -88,6 +89,7 @@ AP.add_argument("--bs",   type=int, default=8)
 AP.add_argument("--seq",  type=int, default=512)
 AP.add_argument("--steps",type=int, default=100)
 AP.add_argument("--config", type=str, help="YAML file overriding any CLI flags")
+AP.add_argument("--grad-accum", type=int, default=1, help="Number of gradient accumulation steps (micro-batching)")
 args = AP.parse_args()
 
 # merge YAML if provided
@@ -145,20 +147,27 @@ for _ in range(2):
 start_all = time.time(); tok_s = copy_s = train_s = 0.0
 host_mb_total = 0.0; losses=[]; timeline=[]; max_grad=0.0
 
+accum_steps = args.grad_accum
+optimizer.zero_grad()
+
 for step in range(args.steps):
     batch = corpus_lines[step*args.bs:(step+1)*args.bs]
 
     t0=time.time(); enc=tokenizer(batch, return_tensors='pt', padding='max_length', truncation=True, max_length=args.seq); tok_s+=time.time()-t0
     ids=enc.input_ids; host_mb_total+=ids.element_size()*ids.numel()/1e6
     t0=time.time(); ids=ids.to(device); copy_s+=time.time()-t0
-    t0=time.time(); out=model(ids,labels=ids); losses.append(out.loss.item()); out.loss.backward();
+    t0=time.time(); out=model(ids,labels=ids); losses.append(out.loss.item())
+    # Scale loss for gradient accumulation
+    (out.loss / accum_steps).backward()
     for p in model.parameters():
         if p.grad is not None:
             g = p.grad.detach().abs().max().item()
             if not np.isfinite(g): raise RuntimeError("NaN/Inf gradient")
             max_grad = max(max_grad, g)
-    optimizer.step()
-    optimizer.zero_grad()
+    # Only step optimizer every accum_steps
+    if (step + 1) % accum_steps == 0 or (step + 1) == args.steps:
+        optimizer.step()
+        optimizer.zero_grad()
     # ── heartbeat every N seconds ─────
     hb_sec = int(os.getenv("PROGRESS_SEC", "10"))
     now = time.time()
@@ -229,6 +238,7 @@ summary = {
     'seed':SEED,
     'timeline':timeline_ref,
     'avg_gpu_w':avg_gpu_w,
+    'grad_accum': args.grad_accum,
     'avg_gpu_temp':avg_gpu_temp
 }
 

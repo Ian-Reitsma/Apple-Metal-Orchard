@@ -1,0 +1,200 @@
+[orchard][flashpatch] FlashAttention monkeypatch ENABLED (GPT2Attention.forward, log=True, detail=False)
+MPS available: True MPS built: True
+[orchard] FlashAttention loaded (SHA e4dd5207…)
+[orchard][flashpatch] --- FlashAttention Patch Context ---
+  PATCH_ENABLED: True
+  FLASHATTN_LOG_KERNEL: True
+  FLASHATTN_LOG_DETAIL: False
+  torch version: 2.7.1
+  Model config (first layer): GPT2Config {
+  "activation_function": "gelu_new",
+  "architectures": [
+    "GPT2LMHeadModel"
+  ],
+  "attn_pdrop": 0.1,
+  "bos_token_id": 50256,
+  "embd_pdrop": 0.1,
+  "eos_token_id": 50256,
+  "initializer_range": 0.02,
+  "layer_norm_epsilon": 1e-05,
+  "model_type": "gpt2",
+  "n_ctx": 1024,
+  "n_embd": 768,
+  "n_head": 12,
+  "n_inner": null,
+  "n_layer": 12,
+  "n_positions": 1024,
+  "reorder_and_upcast_attn": false,
+  "resid_pdrop": 0.1,
+  "scale_attn_by_inverse_layer_idx": false,
+  "scale_attn_weights": true,
+  "summary_activation": null,
+  "summary_first_dropout": 0.1,
+  "summary_proj_to_labels": true,
+  "summary_type": "cls_index",
+  "summary_use_proj": true,
+  "task_specific_params": {
+    "text-generation": {
+      "do_sample": true,
+      "max_length": 50
+    }
+  },
+  "torch_dtype": "float32",
+  "transformers_version": "4.53.0",
+  "use_cache": true,
+  "vocab_size": 50257
+}
+
+  Example Q shape: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16, device: mps:0
+  ENV: USE_FLASH_ATTN=1, PYTHONHASHSEED=None
+-------------------------------------------------------------
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+[orchard][flash_bs1_seq2048] step 1/40 ( 2.5%)  wall=  23.5s  tps≈   87.0
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+[DEBUG][FLASHATTN] Output shape after kernel: torch.Size([1, 12, 2048, 64]), dtype: torch.bfloat16
+[DEBUG][AFTER PERMUTE] torch.Size([1, 2048, 12, 64])
+[DEBUG][AFTER RESHAPE] torch.Size([1, 2048, 768])
+Traceback (most recent call last):
+  File "/Users/ianreitsma/projects/orchard/benchmarks/orchard_bench_v0.8.py", line 165, in <module>
+    if not np.isfinite(g): raise RuntimeError("NaN/Inf gradient")
+RuntimeError: NaN/Inf gradient

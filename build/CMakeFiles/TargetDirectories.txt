@@ -1,0 +1,5 @@
+/Users/ianreitsma/projects/orchard/build/CMakeFiles/edit_cache.dir
+/Users/ianreitsma/projects/orchard/build/CMakeFiles/rebuild_cache.dir
+/Users/ianreitsma/projects/orchard/build/orchard_ops/CMakeFiles/flash_attn.dir
+/Users/ianreitsma/projects/orchard/build/orchard_ops/CMakeFiles/edit_cache.dir
+/Users/ianreitsma/projects/orchard/build/orchard_ops/CMakeFiles/rebuild_cache.dir
