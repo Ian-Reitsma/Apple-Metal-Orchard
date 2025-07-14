@@ -1,6 +1,6 @@
 orchard-env/
 __pycache__/
 .DS_Store
-runs/
+runs/Archive
 data/
 .DS_Store
