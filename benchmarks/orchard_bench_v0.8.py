@@ -2,9 +2,16 @@
 # -*- coding: utf-8 -*-
 """
 Apple‑Metal Orchard Benchmark Script — Baseline v0.7 → v0.8
-Date: 2025‑06‑28
+Updated: 2025‑07‑14
+- Unified device selection (MPS, CUDA, CPU fallback)
+- Deterministic seed for cross-device comparison
+- Full audit trail: errors, progress, and all output split for robust run reproducibility
+- Compatible with new run_epoch.sh logging discipline
+- Output logs with flush safety (10s granularity)
+- Designed for use with both Apple Metal and CUDA/CPU baselines
 
-Final polish
+
+Date: 2025‑06‑28
 -------------
 * **Config YAML** – fully functional `--config path.yaml`; keys override CLI for CI grid‑runs.
 * **Large‑file mmap** when corpus > 256 MB avoids RAM blow‑out.
@@ -129,7 +136,14 @@ if max_steps < args.steps:
 args.steps = max_steps
 
 # ── Model & tokenizer ───────────────────────────────────────────────────────
-device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+if torch.backends.mps.is_available():
+    device = torch.device('mps')
+elif torch.cuda.is_available():
+    device = torch.device('cuda')
+else:
+    device = torch.device('cpu')
+print(f"Using device: {device}", file=sys.stderr)
+
 model = GPT2LMHeadModel.from_pretrained('gpt2').to(device, dtype=DTYPE)
 model.train(); optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
 
