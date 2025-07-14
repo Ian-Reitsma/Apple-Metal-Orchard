@@ -1,0 +1,56 @@
+[orchard][flashpatch] FlashAttention monkeypatch NOT ENABLED (USE_FLASH_ATTN!=1)
+MPS available: True MPS built: True
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+[orchard][feature_baseline_bs2_seq1024] step 1/100 ( 1.0%)  wall= 137.2s  tps≈   14.9
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+[DEBUG][BASELINE] Output shape: torch.Size([2, 1024, 768]), dtype: torch.bfloat16
+Traceback (most recent call last):
+  File "/Users/ianreitsma/projects/orchard/benchmarks/orchard_bench_v0.8.py", line 165, in <module>
+    if not np.isfinite(g): raise RuntimeError("NaN/Inf gradient")
+RuntimeError: NaN/Inf gradient
