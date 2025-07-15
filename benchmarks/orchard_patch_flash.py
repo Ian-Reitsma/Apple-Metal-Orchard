@@ -122,10 +122,10 @@ if PATCH_ENABLED:
                 )
 
             attn_output = attn_output.permute(0, 2, 1, 3)
-            print(f"[DEBUG][AFTER PERMUTE] {attn_output.shape}")
+            #print(f"[DEBUG][AFTER PERMUTE] {attn_output.shape}")
             batch, seq, n_heads, head_dim = attn_output.shape
             attn_output = attn_output.reshape(batch, seq, n_heads * head_dim).contiguous()
-            print(f"[DEBUG][AFTER RESHAPE] {attn_output.shape}")
+            #print(f"[DEBUG][AFTER RESHAPE] {attn_output.shape}")
             attn_output = self.c_proj(attn_output)
             attn_output = self.resid_dropout(attn_output)
             return attn_output, attn_weights

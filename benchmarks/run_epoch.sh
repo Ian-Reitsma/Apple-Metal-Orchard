@@ -62,52 +62,24 @@ if [[ -z "$tag" ]]; then
   exit 2
 fi
 
-# 3 construct run-scoped filenames
+
+
+# 3 construct run‑scoped filenames
 _ts=$(date +%Y%m%d-%H%M%S)
-LOG_FILE_ALL="$RUN_DIR/${_ts}_${tag}_all.log"
-LOG_FILE_ERRORS="$RUN_DIR/${_ts}_${tag}_errors.log"
-LOG_FILE_RUN="$RUN_DIR/${_ts}_${tag}_run.log"
+LOG_FILE="$RUN_DIR/${_ts}_${tag}.log"
 POW_FILE="$RUN_DIR/${_ts}_${tag}.power"
 
-# 4 launch powermetrics (requires sudo or NOPASSWD entry)
-POW_FILE=""  # No power logging by default on PC
-if [[ "$(uname)" == "Darwin" ]]; then
-  sudo powermetrics $PM_OPTS -o "$POW_FILE" &
-  PM_PID=$!
-  trap 'kill $PM_PID 2>/dev/null || true' EXIT INT TERM
-  export POW_FILE
-fi
+# 4 launch powermetrics (requires sudo or NOPASSWD entry)
+#    UID + mtime are later verified by the Python script
+sudo powermetrics $PM_OPTS -o "$POW_FILE" &
+PM_PID=$!
+trap 'kill $PM_PID 2>/dev/null || true' EXIT INT TERM
 
 export POW_FILE  # consumed by orchard_bench_v0.8.py
 
-# 5 run benchmark, split output for logging and real-time display
-# Launch Python, split all output:
-# - All output to $LOG_FILE_ALL
-# - Only error lines to $LOG_FILE_ERRORS
-# - Only progress ("step" lines) to $LOG_FILE_RUN
-# - Errors and progress lines also echoed to terminal
+# 5 run benchmark, capture exit code (PIPESTATUS[0] = python)
+python3 "$PY" --data "$data_path" --tag "$tag" "${py_args[@]}" 2>&1 | tee "$LOG_FILE"
 
-python3 "$PY" --data "$data_path" --tag "$tag" "${py_args[@]}" 2>&1 \
-| tee "$LOG_FILE_ALL" \
-| awk -v runfile="$LOG_FILE_RUN" -v errfile="$LOG_FILE_ERRORS" -v flush=10 '
-  function now() { return systime(); }
-  BEGIN { lastflush = now(); }
-  {
-    # Save every line to correct log file if it matches
-    if ($0 ~ /^\[orchard\]\[.*\] step/) {
-      print $0 | "tee -a \"" runfile "\"";
-      print $0;      # Print to terminal
-    }
-    if ($0 ~ /ERROR|Traceback|RuntimeError/) {
-      print $0 | "tee -a \"" errfile "\"";
-      print $0;      # Print to terminal
-    }
-    # Periodically flush log files to disk
-    if (now() - lastflush > flush) {
-      close(runfile);
-      close(errfile);
-      lastflush = now();
-    }
-  }
-'
 exit_code=${PIPESTATUS[0]}
+
+exit "$exit_code"

@@ -136,14 +136,7 @@ if max_steps < args.steps:
 args.steps = max_steps
 
 # ── Model & tokenizer ───────────────────────────────────────────────────────
-if torch.backends.mps.is_available():
-    device = torch.device('mps')
-elif torch.cuda.is_available():
-    device = torch.device('cuda')
-else:
-    device = torch.device('cpu')
-print(f"Using device: {device}", file=sys.stderr)
-
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 model = GPT2LMHeadModel.from_pretrained('gpt2').to(device, dtype=DTYPE)
 model.train(); optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
 
@@ -257,4 +250,3 @@ summary = {
 }
 
 print("JSON:" + json.dumps(summary))
-
