@@ -1,0 +1,6 @@
+[submodule "third_party/metal-flash-attention"]
+	path = third_party/metal-flash-attention
+	url = https://github.com/philipturner/metal-flash-attention
+[submodule "pytorch"]
+        path = pytorch
+        url = https://github.com/Ian-Reitsma/pytorch.git

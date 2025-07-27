@@ -14,14 +14,17 @@ fsspec==2025.3.0
 hf-xet==1.1.5
 huggingface-hub==0.33.1
 idna==3.10
+importlib_metadata==8.7.0
 Jinja2==3.1.6
 MarkupSafe==3.0.2
+ml_dtypes==0.5.1
 mlx==0.26.1
 mpmath==1.3.0
 multidict==6.6.2
 multiprocess==0.70.16
 networkx==3.2.1
 numpy==2.0.2
+-e git+ssh://git@github.com/Ian-Reitsma/Apple-Metal-Orchard.git@f7c7e1451055473926f97d108aa92fa17ffffaff#egg=orchard
 packaging==25.0
 pandas==2.3.0
 pillow==11.2.1
@@ -34,9 +37,11 @@ PyYAML==6.0.2
 regex==2024.11.6
 requests==2.32.4
 safetensors==0.5.3
+setuptools-scm==8.3.1
 six==1.17.0
 sympy==1.14.0
 tokenizers==0.21.2
+tomli==2.2.1
 torch==2.7.1
 torchaudio==2.7.1
 torchvision==0.22.1
@@ -47,3 +52,4 @@ tzdata==2025.2
 urllib3==2.5.0
 xxhash==3.5.0
 yarl==1.20.1
+zipp==3.23.0

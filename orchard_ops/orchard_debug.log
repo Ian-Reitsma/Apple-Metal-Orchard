@@ -1,0 +1,4 @@
+2025-07-20 07:50:54,054 INFO:orchard_ops.enable_flash:[orchard] enable_flash invoked
+2025-07-20 07:50:54,054 INFO:orchard_ops.enable_flash:[orchard] running from: /Users/ianreitsma/projects/orchard/orchard_ops
+2025-07-20 07:50:54,056 INFO:orchard_ops.enable_flash:[orchard] Loaded library: /Users/ianreitsma/projects/orchard/kernel_lib/flashattn/libflash_attn.dylib
+2025-07-20 07:50:54,056 INFO:orchard_ops.enable_flash:[orchard] FlashAttention function registered. DYLIB loaded: True
