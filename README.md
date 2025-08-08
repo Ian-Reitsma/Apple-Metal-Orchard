@@ -31,3 +31,6 @@ Tests rely on PyTorch. After installing the wheel, run:
 ```
 pytest
 ```
+## Working with submodule changes
+
+If you modify `submodules/metal-tensor`, push its branch first. The root repository references submodule commits directly; if the submodule commit is missing on the remote, cloning or running setup will fail.
