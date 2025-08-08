@@ -33,9 +33,9 @@ pytest
 ```
 ## Working with submodule changes
 
-The repository tracks exact commits of its submodules. Any commit in a submodule
-must exist on the remote **before** the root repository updates its pointer.
-Follow this sequence when editing `submodules/metal-tensor`:
+The repository tracks exact commits of its submodules. Any commit in a
+submodule must exist on the remote **before** the root repository updates its
+pointer. Follow this sequence when editing `submodules/metal-tensor`:
 
 ```bash
 cd submodules/metal-tensor

@@ -104,6 +104,18 @@ Implement, integrate, and benchmark a custom Metal (Apple Silicon) FlashAttentio
   * `orchard/build_custom_torch.sh`
   * `.gitmodules` is correct, with pytorch + flash-attn entries
 * **Check submodule HEADs:** Run `git submodule status` — confirm that pytorch points to the correct fork/commit. Any drift = build break.
+* **Commit submodule changes first:** For repos under `submodules/`, commit and push their branches before updating the root repo. Then run `git add <submodule>` in the root and commit the updated pointer. Omitting this order leaves future clones unable to resolve submodule commits.
+
+  ```bash
+  cd submodules/metal-tensor
+  git commit -am "Describe change"
+  git push origin agent/codex
+
+  cd ../..
+  git add submodules/metal-tensor
+  git commit -m "Update metal-tensor submodule pointer"
+  git push origin agent/codex
+  ```
 * **Confirm virtualenv is using custom built torch:** `python -c 'import torch; print(torch.__file__)'` — must be orchard-env site-packages, and show the correct commit/hash.
 * Run: `pip list | grep torch` — verify torch, torchvision, torchaudio are installed from correct wheels/branches (not PyPI default!)
 * Confirm MPS/Metal availability: `python -c 'import torch; print(torch.backends.mps.is_available())'`
