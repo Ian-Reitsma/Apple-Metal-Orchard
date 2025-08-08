@@ -516,5 +516,30 @@ Log files live in `runs/<timestamp>_*.log`.  Kernel call counter logs to `/tmp/f
 
 ---
 
+## 10  🔄 Submodule commit workflow
+
+The root repository records exact commits for its submodules. When changing files
+inside `submodules/metal-tensor`, push that submodule before committing the root
+repository:
+
+```bash
+cd submodules/metal-tensor
+# edit files, then commit
+git commit -am "Describe change"
+git push origin agent/codex
+
+cd ../..
+# record the new submodule commit in the root repo
+git add submodules/metal-tensor
+git commit -m "Update metal-tensor submodule pointer"
+git push origin agent/codex
+```
+
+If the submodule commit isn't on the remote, `git submodule update` will fail for
+others cloning the repository. After pushing, use `git pull --recurse-submodules`
+followed by `git submodule update --init --recursive` before making further edits
+to keep everything in sync.
+
+---
 
 End of AGENTS.md

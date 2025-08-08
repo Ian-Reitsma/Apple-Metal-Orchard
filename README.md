@@ -33,4 +33,30 @@ pytest
 ```
 ## Working with submodule changes
 
-If you modify `submodules/metal-tensor`, push its branch first. The root repository references submodule commits directly; if the submodule commit is missing on the remote, cloning or running setup will fail.
+The repository tracks exact commits of its submodules. Any commit in a submodule
+must exist on the remote **before** the root repository updates its pointer.
+Follow this sequence when editing `submodules/metal-tensor`:
+
+```bash
+cd submodules/metal-tensor
+# edit files, then commit
+git commit -am "Describe change"
+git push origin agent/codex
+
+cd ../..
+# update root to the new submodule commit
+git add submodules/metal-tensor
+git commit -m "Update metal-tensor submodule pointer"
+git push origin agent/codex
+```
+
+When responding to additional requests after pushing, synchronise both
+repositories with:
+
+```bash
+git pull --recurse-submodules
+git submodule update --init --recursive
+```
+
+If the submodule commit is not pushed first, later clones will fail during
+`git submodule update` because the referenced commit cannot be fetched.
