@@ -1,3 +1,0 @@
-[submodule "submodules/metal-tensor"]
-	path = submodules/metal-tensor
-	url = https://github.com/Ian-Reitsma/metal-tensor.git
