@@ -1,62 +1,36 @@
-# Apple Metal Orchard
+# Metal Orchard
 
-This repository experiments with FlashAttention kernels for PyTorch's Metal (MPS) backend.
+This repository hosts the emerging **Tensor v0** framework for Apple Silicon.
+The core implementation lives under `metal-tensor/` and builds into two
+static libraries: `liborchard_core.a` and `liborchard_metal.a`.
 
-## Building the custom PyTorch wheel
+The earlier PyTorch-centric approach is preserved under `experimental/` for
+reference. It contains a forward-only FlashAttention kernel wired in via a
+PyTorch extension and monkey‑patch. The kernel is correct but speedups only
+appear at long sequence lengths and the backward path is still a CPU fallback.
 
-A helper script is provided under `scripts/build_custom_torch.sh`. It installs the
-required build tools, builds a wheel from the included `pytorch` submodule and then
-installs torchvision and torchaudio from source.
+Development has now pivoted to a ground‑up Metal tensor stack tailored for Mac
+hardware. See `docs/project_status.md` for an overview of current progress and
+the roadmap.
 
-```
-./scripts/build_custom_torch.sh
-```
-
-If `torchaudio` fails with `ModuleNotFoundError: No module named 'cmake'`, ensure
-that the `cmake` and `ninja` Python packages are installed before running the
-script.
-
-To reduce clone size when setting up a new environment you can fetch the repo and
-its submodules with shallow history:
-
-```
-git clone --depth 1 --recurse-submodules --shallow-submodules \
-    https://github.com/Ian-Reitsma/Apple-Metal-Orchard.git
-```
-
-## Running tests
-
-Tests rely on PyTorch. After installing the wheel, run:
-
-```
-pytest
-```
-## Working with submodule changes
-
-The repository tracks exact commits of its submodules. Any commit in a
-submodule must exist on the remote **before** the root repository updates its
-pointer. Follow this sequence when editing `submodules/metal-tensor`:
+## Building
 
 ```bash
-cd submodules/metal-tensor
-# edit files, then commit
-git commit -am "Describe change"
-git push origin agent/codex
-
-cd ../..
-# update root to the new submodule commit
-git add submodules/metal-tensor
-git commit -m "Update metal-tensor submodule pointer"
-git push origin agent/codex
+cmake -S . -B build
+cmake --build build
 ```
 
-When responding to additional requests after pushing, synchronise both
-repositories with:
+Enable the optional PyTorch bridge by passing
+`-DORCHARD_BUILD_EXPERIMENTAL=ON` to the first command.
+
+## Tests
+
+A test suite will live under `metal-tensor/tests`. Run it with:
 
 ```bash
-git pull --recurse-submodules
-git submodule update --init --recursive
+cmake --build build --target test
 ```
 
-If the submodule commit is not pushed first, later clones will fail during
-`git submodule update` because the referenced commit cannot be fetched.
+## Contributing
+
+See `AGENTS.md` for the full contributor guide and development workflow.
