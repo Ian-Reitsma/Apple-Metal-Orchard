@@ -1,8 +1,8 @@
 # Project Status – July 2025
 
 This document captures the current state of the Orchard effort and the path
-forward. It should help new contributors understand what works today and what
-remains open.
+forward. It helps new contributors understand what works today and what remains
+open.
 
 ## FlashAttention Path (Experimental)
 - Forward pass is integrated via a PyTorch C++ extension and monkey‑patch. The
@@ -18,23 +18,23 @@ remains open.
   unimplemented.
 
 ## Tensor v0 Path
-- `metal-tensor/` contains header scaffolding for a new Metal-first tensor
-  library. The design targets intrusive ref‑counted storage, rank‑8 shapes and
-  zero-copy CPU↔GPU transfers.
-- Implementation is incomplete and currently does not build in this Linux
-  environment. Development requires macOS with Xcode 15+ and the Metal 4 SDK.
+- `metal-tensor/` now provides the initial Tensor v0 implementation:
+  - intrusive ref‑counted storage with zero‑copy `Tensor::fromData`
+  - CPU↔Metal copies through `Tensor::to` and runtime blit helpers
+  - allocation profiling and `dump_live_tensors()` for debug tracing
+  - tests for contiguity, CPU adds, command‑queue pooling, and profiling logs
+- Implementation still requires macOS with Xcode 15+ and the Metal 4 SDK and
+  does not build in this Linux environment.
 
 ## Next Steps
 1. Fuse the backward FlashAttention kernels and add dropout support.
-2. Flesh out the Tensor v0 headers into a working library with allocator,
-   runtime contexts and tests.
-3. Benchmark FlashAttention at long sequence lengths and document the speedups
-   once the kernel is fused.
-4. Expand documentation and CI so the project can be built and tested on Apple
-   Silicon without relying on PyTorch.
+2. Extend the Tensor v0 operator set and begin autograd scaffolding.
+3. Replace remaining CPU fallbacks with optimised Metal kernels.
+4. Stand up macOS CI running the full CMake and CTest flow.
+5. Benchmark FlashAttention and core tensor ops and publish performance data.
 
 ## Getting Involved
 - See the top-level `README.md` and `AGENTS.md` for build instructions and
   contributor guidelines.
 - Legacy PyTorch code and benchmark scripts live under `experimental/`.
-- Updates to this file should accompany significant project milestones.
+- Update this file when significant project milestones land.

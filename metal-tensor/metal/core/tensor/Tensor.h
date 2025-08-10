@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <string>
 
 #include "TensorImpl.h"
@@ -21,9 +22,9 @@ public:
   [[nodiscard]] static Tensor empty(const std::array<std::int64_t, 8> &shape,
                                     DType dtype, Device dev);
   [[nodiscard]] static Tensor zerosLike(const Tensor &other);
-  [[nodiscard]] static Tensor fromData(const void *data,
-                                      const std::array<std::int64_t, 8> &shape,
-                                      DType dtype, Device dev);
+  [[nodiscard]] static Tensor
+  fromData(void *data, const std::array<std::int64_t, 8> &shape, DType dtype,
+           Device dev, std::function<void(void *)> deleter = nullptr);
   [[nodiscard]] Tensor view(const std::array<std::int64_t, 8> &newShape) const;
   [[nodiscard]] Tensor slice(int dim, int start, int end, int step = 1) const;
   [[nodiscard]] Tensor to(Device dev) const;
@@ -34,6 +35,7 @@ public:
     auto *base = static_cast<char *>(impl_->storage->data);
     return base + impl_->offset * dtype_size(impl_->dtype);
   }
+  std::int64_t offset() const { return impl_->offset; }
   [[nodiscard]] Tensor clone() const;
 
   DType dtype() const { return impl_->dtype; }

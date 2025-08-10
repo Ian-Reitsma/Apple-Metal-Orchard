@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <mutex>
+#include <sstream>
 #include <string>
 
 #ifdef __APPLE__
@@ -11,6 +14,8 @@
 #import <Metal/Metal.h>
 #endif
 #endif
+
+#include "common/Profiling.h"
 
 namespace orchard::runtime {
 
@@ -23,12 +28,20 @@ public:
 
 class CpuAllocator : public Allocator {
 public:
-  void *allocate(std::size_t bytes, const char * /*label*/) override {
+  void *allocate(std::size_t bytes, const char *label) override {
     void *p = nullptr;
     posix_memalign(&p, 64, bytes);
+    std::ostringstream oss;
+    oss << "alloc " << p << ' ' << bytes << ' ' << (label ? label : "");
+    orchard::tensor_profile_log(oss.str());
     return p;
   }
-  void deallocate(void *ptr) override { free(ptr); }
+  void deallocate(void *ptr) override {
+    std::ostringstream oss;
+    oss << "free " << ptr;
+    orchard::tensor_profile_log(oss.str());
+    free(ptr);
+  }
 };
 
 class MetalAllocator : public Allocator {
@@ -82,7 +95,11 @@ inline void *MetalAllocator::allocate(std::size_t bytes, const char *label) {
                                   options:MTLResourceStorageModeShared];
   }
   buffer.label = [[NSString alloc] initWithUTF8String:label];
-  return (__bridge_retained void *)buffer;
+  void *result = (__bridge_retained void *)buffer;
+  std::ostringstream oss;
+  oss << "alloc " << result << ' ' << bytes << ' ' << (label ? label : "");
+  orchard::tensor_profile_log(oss.str());
+  return result;
 #else
   (void)bytes;
   (void)label;
@@ -93,6 +110,9 @@ inline void *MetalAllocator::allocate(std::size_t bytes, const char *label) {
 inline void MetalAllocator::deallocate(void *ptr) {
 #ifdef __OBJC__
   id<MTLBuffer> buffer = (__bridge_transfer id<MTLBuffer>)ptr;
+  std::ostringstream oss;
+  oss << "free " << ptr;
+  orchard::tensor_profile_log(oss.str());
   buffer = nil;
 #else
   (void)ptr;
@@ -100,4 +120,3 @@ inline void MetalAllocator::deallocate(void *ptr) {
 }
 
 } // namespace orchard::runtime
-
