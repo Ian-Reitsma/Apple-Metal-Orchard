@@ -1,4 +1,7 @@
 #include "Tensor.h"
+#include "../../runtime/CpuContext.h"
+#include "../../runtime/MetalKernels.h"
+#include "../autograd/Node.h"
 
 #include <cassert>
 #include <cstdint>
@@ -62,6 +65,9 @@ Tensor::Tensor(const Tensor &other) {
       os_unfair_lock_unlock(&other.impl_->lock);
     }
   }
+  requires_grad_ = other.requires_grad_;
+  grad_ = other.grad_;
+  grad_fn_ = other.grad_fn_;
 }
 
 Tensor &Tensor::operator=(const Tensor &other) {
@@ -84,11 +90,19 @@ Tensor &Tensor::operator=(const Tensor &other) {
       os_unfair_lock_unlock(&other.impl_->lock);
     }
   }
+  requires_grad_ = other.requires_grad_;
+  grad_ = other.grad_;
+  grad_fn_ = other.grad_fn_;
   return *this;
 }
 
-Tensor::Tensor(Tensor &&other) noexcept : impl_(other.impl_) {
+Tensor::Tensor(Tensor &&other) noexcept
+    : impl_(other.impl_), requires_grad_(other.requires_grad_),
+      grad_(std::move(other.grad_)), grad_fn_(std::move(other.grad_fn_)) {
   other.impl_ = nullptr;
+  other.requires_grad_ = false;
+  other.grad_ = Tensor{};
+  other.grad_fn_.reset();
 }
 
 Tensor &Tensor::operator=(Tensor &&other) noexcept {
@@ -100,7 +114,13 @@ Tensor &Tensor::operator=(Tensor &&other) noexcept {
       delete impl_;
     }
     impl_ = other.impl_;
+    requires_grad_ = other.requires_grad_;
+    grad_ = std::move(other.grad_);
+    grad_fn_ = std::move(other.grad_fn_);
     other.impl_ = nullptr;
+    other.requires_grad_ = false;
+    other.grad_ = Tensor{};
+    other.grad_fn_.reset();
   }
   return *this;
 }
@@ -186,7 +206,10 @@ Tensor Tensor::view(const std::array<std::int64_t, 8> &newShape) const {
   impl->shape = newShape;
   impl->strides = contiguous_strides(newShape);
   impl->offset = this->impl_->offset;
-  return Tensor(impl);
+  Tensor t(impl);
+  t.set_requires_grad(requires_grad_);
+  t.set_grad_fn(grad_fn_);
+  return t;
 }
 
 Tensor Tensor::slice(int dim, int start, int end, int step) const {
@@ -214,7 +237,10 @@ Tensor Tensor::slice(int dim, int start, int end, int step) const {
   impl->shape = newShape;
   impl->strides = newStrides;
   impl->offset = this->impl_->offset + start * this->impl_->strides[dim];
-  return Tensor(impl);
+  Tensor t(impl);
+  t.set_requires_grad(requires_grad_);
+  t.set_grad_fn(grad_fn_);
+  return t;
 }
 
 Tensor Tensor::to(Device dev) const {
@@ -231,7 +257,10 @@ Tensor Tensor::to(Device dev) const {
     impl->shape = this->impl_->shape;
     impl->strides = this->impl_->strides;
     impl->offset = this->impl_->offset;
-    return Tensor(impl);
+    Tensor t(impl);
+    t.set_requires_grad(requires_grad_);
+    t.set_grad_fn(grad_fn_);
+    return t;
   }
 
   Tensor t = empty(impl_->shape, impl_->dtype, dev);
@@ -266,6 +295,8 @@ Tensor Tensor::to(Device dev) const {
 #endif
     }
   }
+  t.set_requires_grad(requires_grad_);
+  t.set_grad_fn(grad_fn_);
   return t;
 }
 
@@ -283,7 +314,10 @@ Tensor Tensor::contiguous() const {
     impl->shape = this->impl_->shape;
     impl->strides = this->impl_->strides;
     impl->offset = this->impl_->offset;
-    return Tensor(impl);
+    Tensor t(impl);
+    t.set_requires_grad(requires_grad_);
+    t.set_grad_fn(grad_fn_);
+    return t;
   }
 
   Tensor out = empty(impl_->shape, impl_->dtype, impl_->device);
@@ -329,7 +363,47 @@ Tensor Tensor::contiguous() const {
       }
     }
   }
+  out.set_requires_grad(requires_grad_);
+  out.set_grad_fn(grad_fn_);
   return out;
+}
+
+Tensor Tensor::add(const Tensor &other) const {
+  if (!impl_ || !other.impl_)
+    return Tensor{};
+  Tensor out = empty(impl_->shape, impl_->dtype, impl_->device);
+  std::size_t n = numel();
+  if (impl_->device == Device::cpu) {
+    runtime::cpu_context().add(static_cast<const float *>(data_ptr()),
+                               static_cast<const float *>(other.data_ptr()),
+                               static_cast<float *>(out.data_ptr()), n);
+  } else if (impl_->device == Device::mps) {
+    runtime::metal_add(static_cast<const float *>(impl_->storage->data),
+                       static_cast<const float *>(other.impl_->storage->data),
+                       static_cast<float *>(out.impl_->storage->data), n);
+  }
+  out.set_requires_grad(requires_grad_ || other.requires_grad_);
+  if (out.requires_grad()) {
+    struct AddNode : autograd::Node {
+      Tensor a;
+      Tensor b;
+      AddNode(const Tensor &aa, const Tensor &bb) : a(aa), b(bb) {}
+      void apply(Tensor &g) override {
+        accumulate(a, g);
+        accumulate(b, g);
+        if (a.grad_fn())
+          a.grad_fn()->apply(a.grad());
+        if (b.grad_fn())
+          b.grad_fn()->apply(b.grad());
+      }
+    };
+    out.set_grad_fn(std::make_shared<AddNode>(*this, other));
+  }
+  return out;
+}
+
+std::size_t Tensor::numel() const {
+  return impl_ ? core::tensor::numel(impl_->shape) : 0;
 }
 
 bool Tensor::is_contiguous() const {
@@ -389,6 +463,8 @@ Tensor Tensor::clone() const {
       }
     }
   }
+  out.set_requires_grad(requires_grad_);
+  out.set_grad_fn(grad_fn_);
   return out;
 }
 
@@ -415,7 +491,7 @@ std::string Tensor::toString() const {
 }
 
 void Tensor::backward() const {
-  assert(!"Tensor::backward() not implemented; autograd engine pending");
+  autograd::backward(const_cast<Tensor &>(*this));
 }
 
 } // namespace orchard::core::tensor
