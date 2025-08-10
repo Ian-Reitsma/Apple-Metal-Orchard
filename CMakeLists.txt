@@ -24,6 +24,7 @@ add_compile_options($<$<COMPILE_LANGUAGE:OBJCXX>:-fno-objc-arc>)
 add_link_options(-ObjC++)
 
 add_subdirectory(metal-tensor)
+add_subdirectory(benchmarks)
 
 if(ORCHARD_BUILD_EXPERIMENTAL)
   add_subdirectory(experimental/orchard_ops)

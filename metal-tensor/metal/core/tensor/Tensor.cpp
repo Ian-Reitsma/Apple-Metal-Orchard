@@ -208,7 +208,21 @@ Tensor Tensor::view(const std::array<std::int64_t, 8> &newShape) const {
   impl->offset = this->impl_->offset;
   Tensor t(impl);
   t.set_requires_grad(requires_grad_);
-  t.set_grad_fn(grad_fn_);
+  if (requires_grad_) {
+    struct ViewNode : autograd::Node {
+      Tensor base;
+      explicit ViewNode(const Tensor &b) : base(b) {}
+      void apply(Tensor &g) override {
+        Tensor reshaped = g.view(base.shape());
+        accumulate(base, reshaped);
+        if (base.grad_fn())
+          base.grad_fn()->apply(base.grad());
+      }
+    };
+    t.set_grad_fn(std::make_shared<ViewNode>(*this));
+  } else {
+    t.set_grad_fn(grad_fn_);
+  }
   return t;
 }
 
@@ -400,6 +414,190 @@ Tensor Tensor::add(const Tensor &other) const {
     out.set_grad_fn(std::make_shared<AddNode>(*this, other));
   }
   return out;
+}
+
+Tensor Tensor::mul(const Tensor &other) const {
+  if (!impl_ || !other.impl_)
+    return Tensor{};
+  Tensor out = empty(impl_->shape, impl_->dtype, impl_->device);
+  std::size_t n = numel();
+  if (impl_->device == Device::cpu) {
+    auto *ap = static_cast<const float *>(data_ptr());
+    auto *bp = static_cast<const float *>(other.data_ptr());
+    auto *op = static_cast<float *>(out.data_ptr());
+    for (std::size_t i = 0; i < n; ++i)
+      op[i] = ap[i] * bp[i];
+  } else if (impl_->device == Device::mps) {
+    runtime::metal_mul(static_cast<const float *>(impl_->storage->data),
+                       static_cast<const float *>(other.impl_->storage->data),
+                       static_cast<float *>(out.impl_->storage->data), n);
+  }
+  bool rg = requires_grad_ || other.requires_grad_;
+  out.set_requires_grad(rg);
+  if (rg) {
+    struct MulNode : autograd::Node {
+      Tensor a;
+      Tensor b;
+      MulNode(const Tensor &aa, const Tensor &bb) : a(aa), b(bb) {}
+      void apply(Tensor &g) override {
+        Tensor ga = Tensor::empty(a.shape(), DType::f32, Device::cpu);
+        Tensor gb = Tensor::empty(b.shape(), DType::f32, Device::cpu);
+        auto *gp = static_cast<const float *>(g.to(Device::cpu).data_ptr());
+        auto *ap = static_cast<const float *>(a.to(Device::cpu).data_ptr());
+        auto *bp = static_cast<const float *>(b.to(Device::cpu).data_ptr());
+        auto *gap = static_cast<float *>(ga.data_ptr());
+        auto *gbp = static_cast<float *>(gb.data_ptr());
+        for (std::size_t i = 0; i < a.numel(); ++i) {
+          gap[i] = gp[i] * bp[i];
+          gbp[i] = gp[i] * ap[i];
+        }
+        accumulate(a, ga.to(a.device()));
+        accumulate(b, gb.to(b.device()));
+        if (a.grad_fn())
+          a.grad_fn()->apply(a.grad());
+        if (b.grad_fn())
+          b.grad_fn()->apply(b.grad());
+      }
+    };
+    out.set_grad_fn(std::make_shared<MulNode>(*this, other));
+  }
+  return out;
+}
+
+Tensor Tensor::matmul(const Tensor &other) const {
+  if (!impl_ || !other.impl_)
+    return Tensor{};
+  std::int64_t m = impl_->shape[0];
+  std::int64_t k = impl_->shape[1];
+  std::int64_t n = other.impl_->shape[1];
+  std::array<std::int64_t, 8> outShape{m, n, 1, 1, 1, 1, 1, 1};
+  Tensor out = empty(outShape, impl_->dtype, impl_->device);
+  if (impl_->device == Device::cpu) {
+    auto *ap = static_cast<const float *>(data_ptr());
+    auto *bp = static_cast<const float *>(other.data_ptr());
+    auto *cp = static_cast<float *>(out.data_ptr());
+    for (std::int64_t i = 0; i < m; ++i) {
+      for (std::int64_t j = 0; j < n; ++j) {
+        float s = 0.0f;
+        for (std::int64_t p = 0; p < k; ++p)
+          s += ap[i * k + p] * bp[p * n + j];
+        cp[i * n + j] = s;
+      }
+    }
+  } else if (impl_->device == Device::mps) {
+    runtime::metal_matmul(
+        static_cast<const float *>(impl_->storage->data),
+        static_cast<const float *>(other.impl_->storage->data),
+        static_cast<float *>(out.impl_->storage->data), m, n, k);
+  }
+  bool rg = requires_grad_ || other.requires_grad_;
+  out.set_requires_grad(rg);
+  if (rg) {
+    struct MatmulNode : autograd::Node {
+      Tensor a;
+      Tensor b;
+      MatmulNode(const Tensor &aa, const Tensor &bb) : a(aa), b(bb) {}
+      void apply(Tensor &g) override {
+        auto m = a.shape()[0];
+        auto k = a.shape()[1];
+        auto n = b.shape()[1];
+        Tensor ga = Tensor::empty(a.shape(), DType::f32, Device::cpu);
+        Tensor gb = Tensor::empty(b.shape(), DType::f32, Device::cpu);
+        auto *gp = static_cast<const float *>(g.to(Device::cpu).data_ptr());
+        auto *bp = static_cast<const float *>(b.to(Device::cpu).data_ptr());
+        auto *ap = static_cast<const float *>(a.to(Device::cpu).data_ptr());
+        auto *gap = static_cast<float *>(ga.data_ptr());
+        auto *gbp = static_cast<float *>(gb.data_ptr());
+        for (std::int64_t i = 0; i < m; ++i) {
+          for (std::int64_t j = 0; j < k; ++j) {
+            float s = 0.0f;
+            for (std::int64_t p = 0; p < n; ++p)
+              s += gp[i * n + p] * bp[j * n + p];
+            gap[i * k + j] = s;
+          }
+        }
+        for (std::int64_t i = 0; i < k; ++i) {
+          for (std::int64_t j = 0; j < n; ++j) {
+            float s = 0.0f;
+            for (std::int64_t p = 0; p < m; ++p)
+              s += ap[p * k + i] * gp[p * n + j];
+            gbp[i * n + j] = s;
+          }
+        }
+        accumulate(a, ga.to(a.device()));
+        accumulate(b, gb.to(b.device()));
+        if (a.grad_fn())
+          a.grad_fn()->apply(a.grad());
+        if (b.grad_fn())
+          b.grad_fn()->apply(b.grad());
+      }
+    };
+    out.set_grad_fn(std::make_shared<MatmulNode>(*this, other));
+  }
+  return out;
+}
+
+Tensor Tensor::sum() const {
+  if (!impl_)
+    return Tensor{};
+  Tensor out = empty({1, 1, 1, 1, 1, 1, 1, 1}, impl_->dtype, impl_->device);
+  if (impl_->device == Device::cpu) {
+    float s = 0.0f;
+    auto *ap = static_cast<const float *>(data_ptr());
+    for (std::size_t i = 0; i < numel(); ++i)
+      s += ap[i];
+    *static_cast<float *>(out.data_ptr()) = s;
+  } else if (impl_->device == Device::mps) {
+    runtime::metal_reduce_sum(static_cast<const float *>(impl_->storage->data),
+                              static_cast<float *>(out.impl_->storage->data),
+                              numel());
+  }
+  out.set_requires_grad(requires_grad_);
+  if (requires_grad_) {
+    struct SumNode : autograd::Node {
+      Tensor a;
+      explicit SumNode(const Tensor &aa) : a(aa) {}
+      void apply(Tensor &g) override {
+        Tensor grad = Tensor::empty(a.shape(), DType::f32, Device::cpu);
+        float v = *static_cast<float *>(g.to(Device::cpu).data_ptr());
+        auto *ptr = static_cast<float *>(grad.data_ptr());
+        for (std::size_t i = 0; i < a.numel(); ++i)
+          ptr[i] = v;
+        accumulate(a, grad.to(a.device()));
+        if (a.grad_fn())
+          a.grad_fn()->apply(a.grad());
+      }
+    };
+    out.set_grad_fn(std::make_shared<SumNode>(*this));
+  }
+  return out;
+}
+
+Tensor Tensor::mean() const {
+  Tensor s = sum();
+  if (!s.data_ptr())
+    return s;
+  float *sp = static_cast<float *>(s.data_ptr());
+  *sp /= static_cast<float>(numel());
+  if (s.requires_grad()) {
+    struct MeanNode : autograd::Node {
+      Tensor a;
+      explicit MeanNode(const Tensor &aa) : a(aa) {}
+      void apply(Tensor &g) override {
+        Tensor grad = Tensor::empty(a.shape(), DType::f32, Device::cpu);
+        float v = *static_cast<float *>(g.to(Device::cpu).data_ptr());
+        v /= static_cast<float>(a.numel());
+        auto *ptr = static_cast<float *>(grad.data_ptr());
+        for (std::size_t i = 0; i < a.numel(); ++i)
+          ptr[i] = v;
+        accumulate(a, grad.to(a.device()));
+        if (a.grad_fn())
+          a.grad_fn()->apply(a.grad());
+      }
+    };
+    s.set_grad_fn(std::make_shared<MeanNode>(*this));
+  }
+  return s;
 }
 
 std::size_t Tensor::numel() const {

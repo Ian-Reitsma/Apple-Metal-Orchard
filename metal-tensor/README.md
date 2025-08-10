@@ -7,13 +7,13 @@
 - CPU and Metal transfers via Tensor::to
 - allocation profiling and dump_live_tensors for debug tracing
 - a starter autograd engine with Tensor::requires_grad, gradient tensors, and a Node and Edge graph powering backward
-- Metal compute kernels beginning with vector add, automatically selected when tensors live on an mps device
+- Metal compute kernels beginning with vector add and matmul, automatically selected when tensors live on an mps device
 
 ## Current Status
 - CPU and Metal backends allocate tensors with intrusive storage and share views without copying.
 - Host and device transfers through Tensor::to round-trip data between CPU and mps devices.
-- Tests validate contiguity, profiling logs, command-queue pooling, and gradient propagation for elementwise add.
-- Only vector addition has a dedicated Metal kernel; other operations still execute on the CPU.
+- Tests validate contiguity, profiling logs, command-queue pooling, multi-device transfers, alignment on non-contiguous views, and gradient propagation for elementwise add, matmul, reductions, and view transforms.
+- Only vector addition and matmul have dedicated Metal kernels; other operations still execute on the CPU.
 
 ## Directory map
 - `metal/` holds the implementation source
@@ -30,7 +30,7 @@
 3. Linux hosts cannot compile the project but should still attempt these commands and include the failure output in pull requests.
 
 ## Testing
-Invoke the tests with cmake --build build --target test. The suite covers contiguity, CPU arithmetic, command-queue pooling, profiling log creation, non-contiguous CPU to Metal to CPU transfers, and autograd gradients for elementwise add.
+Invoke the tests with cmake --build build --target test. The suite covers contiguity, CPU arithmetic, command-queue pooling, multi-device CPU↔Metal↔CPU transfers, mixed CPU→Metal→CPU→Metal sequences, multi-threaded large tensor moves, profiling log validation with matching alloc/free counts, silent behaviour when ORCHARD_TENSOR_PROFILE is unset, alignment and zero-copy checks, and autograd gradients for elementwise add.
 
 ## Milestones
 1. Autograd support for a base operator set including matmul and reductions.

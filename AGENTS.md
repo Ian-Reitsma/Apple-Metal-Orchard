@@ -18,7 +18,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - `Tensor::to` performs host and device transfers. When the source and destination `Device` values match, the call resolves to a zero-copy view preserving the original storage.
 - Allocation profiling is governed by `metal/common/Profiling.h`. Setting the environment variable `ORCHARD_TENSOR_PROFILE` enables logging of alloc, free, and live events. The diagnostic helper `dump_live_tensors` enumerates outstanding `Storage` instances to standard error for post-mortem analysis.
 - Autograd is scaffolded through `Tensor::requires_grad`, the gradient tensor accessible via `Tensor::grad`, and a graph of `Node` and `Edge` objects culminating in the `backward` routine.
-- Metal compute kernels begin with vector addition and are located under `metal/kernels/`. CPU fallbacks are compiled in `metal/core/` and are invoked automatically when Metal is unavailable.
+- Metal compute kernels cover elementwise add and multiply, matrix multiply, and reduce_sum. Shaders live under `metal/kernels/` and dispatch one thread per output element. CPU fallbacks in `metal/core/` activate when Metal is unavailable.
 
 ## Build Protocol
 1. Obtain Xcode 15+ with the Metal 4 SDK; ensure command line tools are active.
@@ -28,6 +28,10 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 ## Test Protocol
 1. With a configured build tree, run the `test` target. Tests live under `metal-tensor/tests/` and exercise CPU/Metal paths.
 2. Run configure + tests before every PR and capture failure logs in the PR description when toolchains are missing.
+
+## Benchmark Protocol
+- Invoke `python benchmarks/run.py -o /tmp/bench` after building to record kernel timings and hardware metadata.
+- Generated JSON results remain untracked; CI archives them as artifacts.
 
 ## Contribution Directives
 - C++20 and ObjC++ only; format with `clang-format`.
@@ -39,6 +43,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - Capture the output of `cmake -S . -B build -G Ninja` and `cmake --build build --target test` and report failures in the pull request.
 - Reference touched files by path and line number in pull request descriptions.
 - Work exclusively on the default branch and refrain from creating new branches within this repository.
+- Keep the CI matrix green. macOS runners for `macos-13` and `macos-14` must pass; the Linux diagnostic job may fail but its logs require review before merging.
 
 ## Workflow Checklist
 1. Run `cmake -S . -B build -G Ninja` from the repository root.
@@ -49,7 +54,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 ## Current Status
 - Tensor v0 supplies intrusive storage, host and device transfer paths, basic autograd, and initial Metal kernels.
 - The legacy PyTorch bridge persists under `experimental/` but is excluded from default builds.
-- macOS continuous integration validates every pull request; Linux configurations fail due to missing Xcode and the Metal SDK.
+- Continuous integration now covers `macos-13` (M1) and `macos-14` (M2) with Xcode 15.3 pinned and Homebrew updates disabled. A Linux job installs a clang-based Objective-C++ toolchain and is allowed to fail for diagnostics.
 - Documentation outlines tensor internals, profiling hooks, and contributor expectations yet remains a living reference.
 
 ## Milestones

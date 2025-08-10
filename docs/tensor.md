@@ -6,6 +6,7 @@
 - intrusive reference counting so storage lifetimes are deterministic and thread safe
 - zero-copy CPU and GPU transfers that share underlying storage when devices match
 - allocation profiling with live tensor dumps for leak analysis
+- matmul, sum, mean, and view gradients extending the autograd graph beyond elementwise add
 
 ## Toolchain
 

@@ -6,16 +6,16 @@ This document captures the current state of the Orchard effort and the path forw
 - Forward pass is integrated via a PyTorch C++ extension and monkey-patch. The custom Metal kernel runs for all GPT-2 attention layers when the environment variable `USE_FLASH_ATTN` is set to 2.
 - Supports multi-head attention, batching, causal masking, and both BF16 and FP32 data types.
 - Performance matches the baseline within a tolerance of 1e-4 and delivers noticeable speedups only at long sequences between four and sixteen thousand tokens. At shorter contexts such as five hundred and twelve tokens the throughput resembles the stock MPS implementation.
-- Backward pass is not yet fused; training falls back to the CPU or PyTorch implementation.
-- Known limitations: the head dimension must be a multiple of eight and dropout remains unimplemented.
+- Backward pass uses a Metal stub that applies the dropout mask and scale but does not yet compute full gradients for keys and values.
+- Known limitations: the head dimension must be a multiple of eight and dropout probabilities must lie within `[0,1)`.
 
 ## Tensor v0 Path
 - `metal-tensor/` provides the initial Tensor v0 implementation:
   - intrusive ref-counted storage with zero-copy Tensor::fromData for wrapping external memory
   - CPU and Metal transfers through Tensor::to with runtime helpers for blit operations
   - allocation profiling and dump_live_tensors for debug tracing
-  - tests for contiguity, CPU adds, command-queue pooling, and profiling logs
-  - seeded autograd and validated gradients for elementwise add across CPU and Metal
+  - tests for contiguity, CPU adds, command-queue pooling, reductions, and profiling logs
+  - seeded autograd and validated gradients for elementwise add, matmul, reductions, and view transforms across CPU and Metal
 - macOS continuous integration caches builds, treats warnings as errors, and runs the test suite on every pull request.
 - Implementation requires macOS with Xcode 15+ and the Metal 4 SDK. The project does not build in this Linux environment, but agents must still attempt configuration and report failures.
 

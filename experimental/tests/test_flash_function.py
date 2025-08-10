@@ -11,6 +11,6 @@ def test_flash_attn_gradcheck():
     q = torch.randn(2, 4, 16, dtype=torch.float32, requires_grad=True, device=device)
     k = q.clone().detach().requires_grad_()
     v = q.clone().detach().requires_grad_()
-    func = lambda q, k, v: enable_flash.flash_attn(q, k, v, 1.0, False)
-    with pytest.raises(RuntimeError, match="not implemented"):
-        torch.autograd.gradcheck(func, (q, k, v), eps=1e-3, atol=1e-2)
+    func = lambda q, k, v: enable_flash.flash_attn(q, k, v, 1.0, 0.0, False)[0]
+    torch.autograd.gradcheck(func, (q.double(), k.double(), v.double()), eps=1e-3, atol=1e-2)
+
