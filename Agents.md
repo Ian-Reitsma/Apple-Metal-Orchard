@@ -11,6 +11,10 @@ All code now lives directly in this repository; **there are no submodules**.
   FlashAttention kernel that is invoked through a monkey‑patch. The backward
   pass and fused dropout are not yet implemented and performance gains only
   appear at long sequence lengths (≥4K tokens).
+- The repository is pivoting toward a **full Metal-native forward and backward
+  pass** for tensor operations. The existing PyTorch bridge remains only for
+  regression tests while we rebuild the stack from scratch to outperform
+  PyTorch on Apple Silicon.
 - See `docs/project_status.md` for a snapshot of ongoing work and next steps.
 
 ## Layout
