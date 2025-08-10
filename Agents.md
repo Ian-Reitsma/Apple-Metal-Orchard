@@ -4,12 +4,16 @@ This repository builds a standalone, Metal‑first tensor stack. All code lives
 in this tree; there are no submodules.
 
 ## Current Status
-- `metal-tensor/` now exposes working pieces of **Tensor v0**:
+- `metal-tensor/` exposes working pieces of **Tensor v0**:
   - intrusive ref‑counted `Storage` with zero‑copy wrapping via `Tensor::fromData`
   - `Tensor::to` performs CPU↔Metal transfers and remains zero‑copy on matching
     devices
   - allocation profiling hooks log `alloc`, `free`, and `live` events to
     `/tmp/orchard_tensor_profile.log`
+  - initial autograd scaffolding with `Tensor::requires_grad`, gradient storage,
+    and a `Node` graph driving `backward`
+  - Metal kernels beginning with elementwise add, with CPU fallbacks when Metal
+    is unavailable
 - `experimental/` retains the legacy PyTorch path with a forward FlashAttention
   kernel for regression comparison.
 
@@ -21,11 +25,17 @@ in this tree; there are no submodules.
 - Wired CPU↔Metal copy paths and command‑queue pooling tests
 - Broadened unit tests for contiguity, CPU vector addition, queue reuse, and
   profiling log creation
+- Added stress tests for non‑contiguous CPU→Metal→CPU transfers and profiling log
+  contents
+- Seeded autograd and validated gradients for elementwise add across CPU and
+  Metal
+- Stood up macOS CI that caches builds, treats warnings as errors, and runs the
+  test suite
 
 ## Next Steps
-1. Implement additional tensor operators and begin autograd scaffolding
+1. Expand the differentiable operator set and autograd coverage
 2. Replace remaining CPU fallbacks with optimised Metal kernels
-3. Stand up macOS CI running the full CMake and CTest flow
+3. Broaden device‑transfer and profiling tests
 4. Benchmark kernel performance and publish results
 
 ## Layout

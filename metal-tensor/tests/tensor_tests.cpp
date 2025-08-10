@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <sstream>
+#include <string>
 
 #include "core/tensor/Debug.h"
 #include "core/tensor/Tensor.h"
@@ -104,6 +106,28 @@ TEST(TensorTest, DataPtrAlignment) {
   EXPECT_EQ(addr % 64, 0u);
 }
 
+TEST(TensorAutogradTest, AddBackward) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *bp = static_cast<float *>(b.data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    ap[i] = static_cast<float>(i);
+    bp[i] = static_cast<float>(i * 2);
+  }
+  a.set_requires_grad(true);
+  b.set_requires_grad(true);
+  Tensor c = a.add(b);
+  c.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  auto *bg = static_cast<float *>(b.grad().data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_FLOAT_EQ(ag[i], 1.0f);
+    EXPECT_FLOAT_EQ(bg[i], 1.0f);
+  }
+}
+
 #ifdef __APPLE__
 TEST(TensorTest, CpuMetalRoundtrip) {
   std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
@@ -116,6 +140,68 @@ TEST(TensorTest, CpuMetalRoundtrip) {
   auto *bptr = static_cast<float *>(back.data_ptr());
   for (int i = 0; i < 4; ++i)
     EXPECT_EQ(bptr[i], ptr[i]);
+}
+
+TEST(TensorTest, CpuMetalRoundtripNonContiguousLarge) {
+  const std::int64_t N = 10000;
+  std::array<std::int64_t, 8> shape{N, 1, 1, 1, 1, 1, 1, 1};
+  Tensor cpu = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *base = static_cast<float *>(cpu.data_ptr());
+  for (std::int64_t i = 0; i < N; ++i)
+    base[i] = static_cast<float>(i);
+  Tensor slice = cpu.slice(0, 0, N, 2);
+  EXPECT_FALSE(slice.is_contiguous());
+  Tensor metal = slice.to(Device::mps);
+  Tensor back = metal.to(Device::cpu);
+  auto *bptr = static_cast<float *>(back.data_ptr());
+  for (std::int64_t i = 0; i < N / 2; ++i)
+    EXPECT_FLOAT_EQ(bptr[i], static_cast<float>(i * 2));
+}
+
+TEST(TensorTest, AddMetalMatchesCpu) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *bp = static_cast<float *>(b.data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    ap[i] = static_cast<float>(i);
+    bp[i] = static_cast<float>(i * 2);
+  }
+  Tensor cpu = a.add(b);
+  Tensor ma = a.to(Device::mps);
+  Tensor mb = b.to(Device::mps);
+  Tensor mc = ma.add(mb).to(Device::cpu);
+  auto *cp = static_cast<float *>(cpu.data_ptr());
+  auto *mp = static_cast<float *>(mc.data_ptr());
+  for (int i = 0; i < 3; ++i)
+    EXPECT_FLOAT_EQ(cp[i], mp[i]);
+}
+
+TEST(TensorTest, AutogradAddMetal) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *bp = static_cast<float *>(b.data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    ap[i] = static_cast<float>(i);
+    bp[i] = static_cast<float>(i * 2);
+  }
+  a.set_requires_grad(true);
+  b.set_requires_grad(true);
+  Tensor ma = a.to(Device::mps);
+  Tensor mb = b.to(Device::mps);
+  Tensor c = ma.add(mb);
+  c.backward();
+  Tensor ag = ma.grad().to(Device::cpu);
+  Tensor bg = mb.grad().to(Device::cpu);
+  auto *agp = static_cast<float *>(ag.data_ptr());
+  auto *bgp = static_cast<float *>(bg.data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_FLOAT_EQ(agp[i], 1.0f);
+    EXPECT_FLOAT_EQ(bgp[i], 1.0f);
+  }
 }
 #endif
 
@@ -173,4 +259,28 @@ TEST(TensorTest, ProfilingLogCreation) {
   std::ifstream ifs("/tmp/orchard_tensor_profile.log");
   EXPECT_TRUE(ifs.good());
   unsetenv("ORCHARD_TENSOR_PROFILE");
+}
+
+TEST(TensorTest, ProfilingLogEntries) {
+  std::remove("/tmp/orchard_tensor_profile.log");
+  setenv("ORCHARD_TENSOR_PROFILE", "1", 1);
+  std::array<std::int64_t, 8> shape{1, 1, 1, 1, 1, 1, 1, 1};
+  {
+    Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+    Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
+    dump_live_tensors();
+    (void)a;
+    (void)b;
+  }
+  dump_live_tensors();
+  unsetenv("ORCHARD_TENSOR_PROFILE");
+
+  std::ifstream ifs("/tmp/orchard_tensor_profile.log");
+  ASSERT_TRUE(ifs.good());
+  std::stringstream buffer;
+  buffer << ifs.rdbuf();
+  std::string contents = buffer.str();
+  EXPECT_NE(contents.find("alloc"), std::string::npos);
+  EXPECT_NE(contents.find("free"), std::string::npos);
+  EXPECT_NE(contents.find("live"), std::string::npos);
 }

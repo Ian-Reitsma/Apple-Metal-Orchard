@@ -11,4 +11,5 @@ stack.
 
 ## Next Steps
 These files remain for reference while the Metal stack matures. Remove or update
-them once equivalent Metal-native kernels exist in `metal-tensor`.
+them once equivalent Metal-native kernels exist in `metal-tensor` and the
+PyTorch path is no longer used.

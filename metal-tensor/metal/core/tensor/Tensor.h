@@ -2,11 +2,16 @@
 
 #include <array>
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "TensorImpl.h"
 
-namespace orchard::core::tensor {
+namespace orchard::core {
+namespace autograd {
+struct Node;
+}
+namespace tensor {
 
 class Tensor {
 public:
@@ -29,6 +34,7 @@ public:
   [[nodiscard]] Tensor slice(int dim, int start, int end, int step = 1) const;
   [[nodiscard]] Tensor to(Device dev) const;
   [[nodiscard]] Tensor contiguous() const;
+  [[nodiscard]] Tensor add(const Tensor &other) const;
   void *data_ptr() const {
     if (!impl_ || !impl_->storage)
       return nullptr;
@@ -45,12 +51,27 @@ public:
   std::size_t nbytes() const {
     return impl_->storage ? impl_->storage->nbytes : 0;
   }
+  std::size_t numel() const;
   bool is_contiguous() const;
   std::string toString() const;
   void backward() const;
 
+  bool requires_grad() const { return requires_grad_; }
+  void set_requires_grad(bool v) { requires_grad_ = v; }
+  const Tensor &grad() const { return grad_; }
+  Tensor &grad() { return grad_; }
+  void set_grad(const Tensor &g) { grad_ = g; }
+  std::shared_ptr<autograd::Node> grad_fn() const { return grad_fn_; }
+  void set_grad_fn(std::shared_ptr<autograd::Node> fn) {
+    grad_fn_ = std::move(fn);
+  }
+
 private:
   TensorImpl *impl_{nullptr};
+  bool requires_grad_{false};
+  Tensor grad_{};
+  std::shared_ptr<autograd::Node> grad_fn_{};
 };
 
-} // namespace orchard::core::tensor
+} // namespace tensor
+} // namespace orchard::core
