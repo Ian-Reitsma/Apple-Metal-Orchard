@@ -1,8 +1,17 @@
 #include "Tensor.h"
 
-#include <cstring>
 #include <cassert>
+#include <cstdint>
+#include <cstring>
 #include <sstream>
+
+#ifdef __APPLE__
+namespace orchard::runtime {
+void metal_copy_buffers(void *dstBuf, void *srcBuf, std::size_t bytes);
+void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes);
+void metal_copy_metal_to_cpu(void *dst, void *srcBuf, std::size_t bytes);
+} // namespace orchard::runtime
+#endif
 
 namespace orchard::core::tensor {
 
@@ -36,6 +45,10 @@ std::int64_t numel(const std::array<std::int64_t, 8> &shape) {
   for (int i = 0; i < r; ++i)
     n *= shape[i];
   return n;
+}
+
+bool aligned64(const void *ptr) {
+  return reinterpret_cast<std::uintptr_t>(ptr) % 64 == 0;
 }
 
 } // namespace
@@ -131,20 +144,36 @@ Tensor Tensor::zerosLike(const Tensor &other) {
   return t;
 }
 
-Tensor Tensor::fromData(const void *data,
-                        const std::array<std::int64_t, 8> &shape,
-                        DType dtype, Device dev) {
-  Tensor t = empty(shape, dtype, dev);
-  if (t.impl_ && t.impl_->storage && data) {
-    std::memcpy(t.impl_->storage->data, data, t.impl_->storage->nbytes);
-  }
-  return t;
+Tensor Tensor::fromData(void *data, const std::array<std::int64_t, 8> &shape,
+                        DType dtype, Device dev,
+                        std::function<void(void *)> deleter) {
+  int r = rank_of(shape);
+  if (!data || r > 8)
+    return Tensor{};
+  if (!aligned64(data))
+    return Tensor{};
+  std::size_t bytes = numel(shape) * dtype_size(dtype);
+  Storage *storage = Storage::wrap(data, bytes, dev, std::move(deleter));
+  if (!storage)
+    return Tensor{};
+  auto *impl = new TensorImpl{};
+  impl->storage = storage;
+  impl->shape = shape;
+  impl->strides = contiguous_strides(shape);
+  impl->dtype = dtype;
+  impl->device = dev;
+  impl->offset = 0;
+  return Tensor(impl);
 }
 
 Tensor Tensor::view(const std::array<std::int64_t, 8> &newShape) const {
   int r = rank_of(newShape);
   if (r > 8 || !impl_ || !impl_->storage)
     return Tensor{};
+  for (int i = 0; i < r; ++i) {
+    if (newShape[i] <= 0)
+      return Tensor{};
+  }
   if (numel(newShape) != numel(impl_->shape))
     return Tensor{};
   auto *impl = new TensorImpl{};
@@ -209,8 +238,32 @@ Tensor Tensor::to(Device dev) const {
   if (t.impl_ && t.impl_->storage) {
     Tensor src = contiguous();
     if (src.impl_ && src.impl_->storage) {
-      std::memcpy(t.impl_->storage->data, src.data_ptr(),
-                  t.impl_->storage->nbytes);
+      std::size_t bytes = t.impl_->storage->nbytes;
+      if (impl_->device == Device::cpu && dev == Device::cpu) {
+        std::memcpy(t.data_ptr(), src.data_ptr(), bytes);
+      }
+#ifdef __APPLE__
+      else if (impl_->device == Device::cpu && dev == Device::mps) {
+        if (!aligned64(src.data_ptr()))
+          return Tensor{};
+        orchard::runtime::metal_copy_cpu_to_metal(t.impl_->storage->data,
+                                                  src.data_ptr(), bytes);
+      } else if (impl_->device == Device::mps && dev == Device::cpu) {
+        if (!aligned64(t.data_ptr()))
+          return Tensor{};
+        orchard::runtime::metal_copy_metal_to_cpu(
+            t.data_ptr(), src.impl_->storage->data, bytes);
+      } else if (impl_->device == Device::mps && dev == Device::mps) {
+        orchard::runtime::metal_copy_buffers(t.impl_->storage->data,
+                                             src.impl_->storage->data, bytes);
+      } else {
+        std::memcpy(t.data_ptr(), src.data_ptr(), bytes);
+      }
+#else
+      else {
+        std::memcpy(t.data_ptr(), src.data_ptr(), bytes);
+      }
+#endif
     }
   }
   return t;

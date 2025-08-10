@@ -1,21 +1,32 @@
 # AGENTS.md – Contributor Guide
 
-This repository is transitioning to a standalone Metal-based tensor stack.
-All code now lives directly in this repository; **there are no submodules**.
+This repository builds a standalone, Metal‑first tensor stack. All code lives
+in this tree; there are no submodules.
 
 ## Current Status
-- `metal-tensor/` currently contains header scaffolding for **Tensor v0**; the
-  implementation is incomplete and requires Apple’s toolchain (Xcode 15+ and
-  the Metal SDK) to build.
-- `experimental/` holds the older PyTorch path. It includes a working forward
-  FlashAttention kernel that is invoked through a monkey‑patch. The backward
-  pass and fused dropout are not yet implemented and performance gains only
-  appear at long sequence lengths (≥4K tokens).
-- The repository is pivoting toward a **full Metal-native forward and backward
-  pass** for tensor operations. The existing PyTorch bridge remains only for
-  regression tests while we rebuild the stack from scratch to outperform
-  PyTorch on Apple Silicon.
-- See `docs/project_status.md` for a snapshot of ongoing work and next steps.
+- `metal-tensor/` now exposes working pieces of **Tensor v0**:
+  - intrusive ref‑counted `Storage` with zero‑copy wrapping via `Tensor::fromData`
+  - `Tensor::to` performs CPU↔Metal transfers and remains zero‑copy on matching
+    devices
+  - allocation profiling hooks log `alloc`, `free`, and `live` events to
+    `/tmp/orchard_tensor_profile.log`
+- `experimental/` retains the legacy PyTorch path with a forward FlashAttention
+  kernel for regression comparison.
+
+## Recent Work
+- Centralised profiling helpers in `common/Profiling.h` and added
+  `dump_live_tensors()` for live allocation inspection
+- Hardened `view` and `slice` semantics and tracked offsets for debugging
+- Introduced the zero‑copy `Tensor::fromData` factory with optional deleter
+- Wired CPU↔Metal copy paths and command‑queue pooling tests
+- Broadened unit tests for contiguity, CPU vector addition, queue reuse, and
+  profiling log creation
+
+## Next Steps
+1. Implement additional tensor operators and begin autograd scaffolding
+2. Replace remaining CPU fallbacks with optimised Metal kernels
+3. Stand up macOS CI running the full CMake and CTest flow
+4. Benchmark kernel performance and publish results
 
 ## Layout
 - `metal-tensor/` – core tensor and runtime libraries
@@ -23,19 +34,28 @@ All code now lives directly in this repository; **there are no submodules**.
 - `docs/` – project documentation
 
 ## Building
-```bash
-cmake -S . -B build
-cmake --build build
-```
-Pass `-DORCHARD_BUILD_EXPERIMENTAL=ON` to build the legacy PyTorch bridge.
+1. Install Xcode 15+ and the Metal 4 SDK
+2. Configure:
+   ```bash
+   cmake -S . -B build
+   ```
+3. Build:
+   ```bash
+   cmake --build build
+   ```
+4. Pass `-DORCHARD_BUILD_EXPERIMENTAL=ON` to include the legacy PyTorch bridge
 
 ## Testing
-Tests will reside in `metal-tensor/tests` and can be executed with
-`cmake --build build --target test`.
+Run the test suite with:
+```bash
+cmake --build build --target test
+```
+Always attempt to configure and run tests before submitting a PR, even when the
+Metal toolchain is unavailable.
 
 ## Guidelines
-- Use C++20 and clang-format for all C++/ObjC++ code.
-- Avoid committing large binaries (>5 MB).
-- Run `cmake` and the test suite before submitting a PR.
+- Use C++20 and clang-format for all C++/ObjC++ code
+- Avoid committing binaries larger than 5 MB
+- Run `cmake` and the test suite before every PR
 
 Happy hacking!

@@ -27,6 +27,12 @@ public:
 
   /// Return a command queue to the thread‑local pool.
   void return_command_queue(id<MTLCommandQueue> queue);
+
+  /// Acquire a blit command encoder along with its backing queue and
+  /// command buffer. The caller is responsible for ending encoding,
+  /// committing the command buffer and returning the queue.
+  id<MTLBlitCommandEncoder> acquire_blit_encoder(id<MTLCommandQueue> &queue,
+                                                 id<MTLCommandBuffer> &cmdBuf);
 #endif
 
 private:
@@ -72,8 +78,21 @@ inline void orchard::runtime::MetalContext::return_command_queue(
 #endif
 }
 
+inline id<MTLBlitCommandEncoder>
+orchard::runtime::MetalContext::acquire_blit_encoder(
+    id<MTLCommandQueue> &queue, id<MTLCommandBuffer> &cmdBuf) {
+#ifdef __APPLE__
+  queue = acquire_command_queue();
+  cmdBuf = [queue commandBuffer];
+  return [cmdBuf blitCommandEncoder];
+#else
+  (void)queue;
+  (void)cmdBuf;
+  return nullptr;
+#endif
+}
+
 inline orchard::runtime::MetalContext &orchard::runtime::metal_context() {
   thread_local MetalContext ctx;
   return ctx;
 }
-

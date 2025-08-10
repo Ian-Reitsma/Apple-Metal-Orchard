@@ -1,6 +1,7 @@
 add_library(orchard_core STATIC
   metal/core/core.cpp
   metal/core/tensor/Tensor.cpp
+  metal/core/tensor/Debug.cpp
 )
 
 target_include_directories(orchard_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/metal)
