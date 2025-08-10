@@ -54,11 +54,11 @@ def main(verbose=False):
         else:
             logger.warning("[orchard] torch not available; cannot load library")
 
-        def flash_attn(q, k, v, scale, causal=False):
+        def flash_attn(q, k, v, scale, dropout_p=0.0, causal=False):
             """Universal entry for FlashAttention with autograd. Raises if dependencies unavailable."""
             if torch is None or FlashAttnFunction is None:
                 raise RuntimeError("PyTorch and FlashAttnFunction must be available")
-            return FlashAttnFunction.apply(q, k, v, scale, causal)
+            return FlashAttnFunction.apply(q, k, v, scale, dropout_p, causal)
 
         setattr(sys.modules[__name__], "flash_attn", flash_attn)
         logger.info(f"[orchard] FlashAttention function registered. DYLIB loaded: {dylib_loaded}")

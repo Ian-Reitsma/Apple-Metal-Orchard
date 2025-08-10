@@ -18,7 +18,9 @@ def test_flash_attn_output_shape_and_dtype():
     q = torch.randn(2, 4, 64, device='mps', dtype=torch.float16)
     k = torch.randn(2, 4, 64, device='mps', dtype=torch.float16)
     v = torch.randn(2, 4, 64, device='mps', dtype=torch.float16)
-    out = enable_flash.flash_attn(q, k, v, 1.0, False)
+    out, mask = enable_flash.flash_attn(q, k, v, 1.0, 0.0, False)
     assert out.shape == q.shape, f"Expected output shape {q.shape}, got {out.shape}"
     assert out.dtype == q.dtype, f"Expected output dtype {q.dtype}, got {out.dtype}"
     assert out.device == q.device, f"Expected output device {q.device}, got {out.device}"
+    assert mask.shape == out.shape
+

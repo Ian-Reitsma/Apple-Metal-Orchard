@@ -6,7 +6,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-add_executable(metal_tensor_tests tensor_tests.cpp)
+add_executable(metal_tensor_tests tensor_tests.cpp multi_device_tests.cpp)
 
 target_link_libraries(metal_tensor_tests PRIVATE gtest_main orchard_core orchard_metal)
 

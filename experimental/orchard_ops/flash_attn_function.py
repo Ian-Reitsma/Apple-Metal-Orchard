@@ -31,59 +31,69 @@ def _metal_kernel_available():
     )
 
 class FlashAttnFunction(Function):
-    """
-    Autograd function for Metal FlashAttention (forward and backward).
-    If Metal backward is not available, devs can enable PyTorch fallback via _DEBUG.
-    """
+    """Autograd function for Metal FlashAttention with dropout."""
 
     @staticmethod
-    def forward(ctx, q, k, v, scale: float, causal: bool):
+    def forward(ctx, q, k, v, scale: float, dropout_p: float, causal: bool):
         if torch is None:
             _fail("PyTorch not available (did you install torch?)")
         if not hasattr(torch.ops, "flash_attn_mps") or not hasattr(torch.ops.flash_attn_mps, "_flash_attn_fwd"):
             _fail("flash_attn_mps kernel not loaded (did you call enable_flash.main()?)")
-        # Only allow 'mps' device for the Metal path
         if any(t.device.type != 'mps' for t in (q, k, v)):
             _fail(f"Input tensors must be on 'mps' device, got {[t.device for t in (q, k, v)]}")
+        head_dim = q.shape[-1]
+        if head_dim % 8 != 0:
+            _fail(f"head_dim must be multiple of eight, got {head_dim}")
+        if not (0.0 <= dropout_p < 1.0):
+            _fail(f"dropout_p must be in [0,1), got {dropout_p}")
         ctx.scale = scale
+        ctx.dropout_p = dropout_p
         ctx.causal = causal
-        ctx.save_for_backward(q, k, v)
+        out, mask = torch.ops.flash_attn_mps._flash_attn_fwd(
+            q, k, v, float(scale), float(dropout_p), causal
+        )
+        ctx.save_for_backward(q, k, v, mask)
+        ctx.mark_non_differentiable(mask)
         if _DEBUG:
-            print(f"[orchard][FlashAttnFunction.forward] Shapes: q={q.shape}, scale={scale}, causal={causal}")
-        return torch.ops.flash_attn_mps._flash_attn_fwd(q, k, v, float(scale), causal)
+            print(
+                f"[orchard][FlashAttnFunction.forward] Shapes: q={q.shape}, scale={scale}, dropout={dropout_p}, causal={causal}"
+            )
+        return out, mask
 
     @staticmethod
     def backward(ctx, grad_out):
         if torch is None:
             _fail("PyTorch not available")
-        q, k, v = ctx.saved_tensors
+        q, k, v, mask = ctx.saved_tensors
         metal_kernel_ok = (
             hasattr(torch.ops, "flash_attn_mps") and
             hasattr(torch.ops.flash_attn_mps, "_flash_attn_bwd")
         )
         if metal_kernel_ok:
             grad_q, grad_k, grad_v = torch.ops.flash_attn_mps._flash_attn_bwd(
-                grad_out, q, k, v, float(ctx.scale), ctx.causal
+                grad_out, q, k, v, mask, float(ctx.scale), float(ctx.dropout_p), ctx.causal
             )
         elif _DEBUG:
             print("[orchard][FlashAttnFunction.backward] Metal kernel unavailable, attempting PyTorch fallback.", file=sys.stderr)
-            # DEV/CI fallback: use PyTorch autograd for backward if available
             if hasattr(torch.nn.functional, 'scaled_dot_product_attention'):
                 with torch.enable_grad():
                     q_, k_, v_ = [x.detach().clone().requires_grad_(True) for x in (q, k, v)]
                     out = torch.nn.functional.scaled_dot_product_attention(
-                        q_, k_, v_, dropout_p=0.0, is_causal=ctx.causal
+                        q_, k_, v_, dropout_p=ctx.dropout_p, is_causal=ctx.causal
                     )
                     grads = torch.autograd.grad(out, (q_, k_, v_), grad_out)
                     grad_q, grad_k, grad_v = grads
             else:
                 _fail("Neither Metal nor PyTorch fallback for FlashAttention backward is available.")
         else:
-            _fail("Metal FlashAttention backward kernel unavailable (no fallback; set ORCHARD_DEBUG_FLASHATN=1 for PyTorch dev mode).")
-        return grad_q, grad_k, grad_v, None, None
+            _fail(
+                "Metal FlashAttention backward kernel unavailable (no fallback; set ORCHARD_DEBUG_FLASHATN=1 for PyTorch dev mode)."
+            )
+        return grad_q, grad_k, grad_v, None, None, None
 
 
-def flash_attn(q, k, v, scale, causal=False):
+def flash_attn(q, k, v, scale, dropout_p=0.0, causal=False):
     if torch is None:
         _fail("PyTorch not available")
-    return FlashAttnFunction.apply(q, k, v, scale, causal)
+    return FlashAttnFunction.apply(q, k, v, scale, dropout_p, causal)
+

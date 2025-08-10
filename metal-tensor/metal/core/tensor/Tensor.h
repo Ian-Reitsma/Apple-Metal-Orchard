@@ -35,6 +35,10 @@ public:
   [[nodiscard]] Tensor to(Device dev) const;
   [[nodiscard]] Tensor contiguous() const;
   [[nodiscard]] Tensor add(const Tensor &other) const;
+  [[nodiscard]] Tensor mul(const Tensor &other) const;
+  [[nodiscard]] Tensor matmul(const Tensor &other) const;
+  [[nodiscard]] Tensor sum() const;
+  [[nodiscard]] Tensor mean() const;
   void *data_ptr() const {
     if (!impl_ || !impl_->storage)
       return nullptr;

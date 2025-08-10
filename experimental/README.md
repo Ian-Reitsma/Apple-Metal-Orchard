@@ -14,7 +14,8 @@ The `experimental` directory preserves the legacy PyTorch bridge used before Ten
 - A complete PyTorch environment is required to compile and run any code in this subtree.
 
 ## Current Status
-- Forward FlashAttention kernels run for GPT-2 attention layers when `USE_FLASH_ATTN=2`; backward paths fall back to PyTorch.
+- Forward FlashAttention kernels run for GPT-2 attention layers when `USE_FLASH_ATTN=2`; backward paths now apply a lightweight Metal stub that respects the dropout mask and scale without calling PyTorch's reference.
+- The Python wrapper validates `head_dim` as a multiple of eight and enforces `dropout_p` within `[0,1)`, returning the mask alongside the attention output.
 - Benchmarks serve regression comparison only and are not optimized for new features.
 - Linux hosts can compile the extensions but execute them without Metal acceleration, limiting validation to CPU results.
 
@@ -24,7 +25,7 @@ The `experimental` directory preserves the legacy PyTorch bridge used before Ten
 3. Remove the subtree once the Metal-native stack provides equivalent coverage.
 
 ## Next Steps
-1. Mirror essential kernels into `metal-tensor` to reduce reliance on the bridge.
+1. Replace the stubbed backward kernel with a fully fused Metal implementation producing true gradients for `q`, `k`, and `v`.
 2. Periodically rerun benchmarks to detect drift between Tensor v0 and the PyTorch baseline.
 3. Trim obsolete scripts and data to keep the directory lean until deprecation.
 
