@@ -1,35 +1,43 @@
 # metal-tensor
 
-`metal-tensor` contains the Tensor v0 library and runtime. It provides:
+`metal-tensor` contains the Tensor v0 library and runtime. It provides:
 
-- intrusive ref‑counted `Storage`
-- `Tensor::empty`, `Tensor::view`, `Tensor::slice`, and zero‑copy
-  `Tensor::fromData`
-- CPU↔Metal transfers via `Tensor::to`
-- allocation profiling and `dump_live_tensors()` for debug tracing
-- a starter autograd engine with `Tensor::requires_grad`, gradient tensors, and
-  a `Node`/`Edge` graph powering `backward`
-- Metal compute kernels beginning with vector add, automatically selected when
-  tensors live on an MPS device
+- intrusive ref-counted Storage objects
+- Tensor::empty, Tensor::view, Tensor::slice, and zero-copy Tensor::fromData
+- CPU and Metal transfers via Tensor::to
+- allocation profiling and dump_live_tensors for debug tracing
+- a starter autograd engine with Tensor::requires_grad, gradient tensors, and a Node and Edge graph powering backward
+- Metal compute kernels beginning with vector add, automatically selected when tensors live on an mps device
+
+## Current Status
+- CPU and Metal backends allocate tensors with intrusive storage and share views without copying.
+- Host and device transfers through Tensor::to round-trip data between CPU and mps devices.
+- Tests validate contiguity, profiling logs, command-queue pooling, and gradient propagation for elementwise add.
+- Only vector addition has a dedicated Metal kernel; other operations still execute on the CPU.
+
+## Directory map
+- `metal/` holds the implementation source
+  - `common/` groups utilities such as Profiling.h and debug helpers including dump_live_tensors
+  - `core/` defines Tensor, Storage, Device, and factory functions like Tensor::empty, view, slice, and fromData
+  - `kernels/` contains Metal shader entry points
+  - `runtime/` manages MTLDevice selection and command queue pooling referenced by Tensor::to during transfers
+- `tests/` bundles unit tests centred around tensor_tests.cpp that validate contiguity, CPU arithmetic, Metal dispatch, profiling, and autograd
+- `docs/` houses design specifications such as design_spec_tensor_v0.md
 
 ## Building
-1. Ensure Xcode 15+, the Metal 4 SDK, and command line tools are installed
-2. From the repository root run:
-   ```bash
-   cmake -S . -B build -G Ninja
-   cmake --build build
-   ```
+1. Ensure Xcode 15+, the Metal 4 SDK, and command line tools are installed.
+2. From the repository root run cmake -S . -B build -G Ninja followed by cmake --build build to configure and build the library.
+3. Linux hosts cannot compile the project but should still attempt these commands and include the failure output in pull requests.
 
 ## Testing
-Invoke the tests with:
-```bash
-cmake --build build --target test
-```
-The suite covers contiguity, CPU arithmetic, command‑queue pooling, profiling
-log creation, non‑contiguous CPU→Metal→CPU transfers, and autograd gradients for
-elementwise add.
+Invoke the tests with cmake --build build --target test. The suite covers contiguity, CPU arithmetic, command-queue pooling, profiling log creation, non-contiguous CPU to Metal to CPU transfers, and autograd gradients for elementwise add.
+
+## Milestones
+1. Autograd support for a base operator set including matmul and reductions.
+2. Optimized Metal kernels for all core operations with parity to CPU fallbacks.
+3. Stable 0.1 release enabling external projects to consume `liborchard_core.a` and `liborchard_metal.a`.
 
 ## Next Steps
-- Broaden autograd coverage and add more differentiable operators
-- Implement Metal kernels for remaining CPU paths
-- Grow the test suite to cover additional device transfers and upcoming ops
+- Broaden autograd coverage and add more differentiable operators.
+- Implement Metal kernels for remaining CPU paths and retire redundant code.
+- Grow the test suite to cover additional device transfers and upcoming ops.

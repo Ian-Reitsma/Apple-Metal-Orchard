@@ -1,67 +1,56 @@
 # Metal Orchard
 
-This repository hosts the emerging **Tensor v0** framework for Apple Silicon.
-The codebase is rebuilding a tensor runtime and kernel stack from the ground up
-for Metal. The core implementation lives under `metal-tensor/` and builds into
-`liborchard_core.a` and `liborchard_metal.a`.
+`metal-orchard` is the incubation ground for Tensor v0, a tensor runtime and kernel stack engineered for Apple Silicon and the Metal application programming interface. The repository hosts every source file, test, and document required to construct the project; no external submodules are referenced.
 
-## Features
-- rank‑8 shapes and explicit strides
-- intrusive reference counted `Storage` with zero‑copy wrapping via
-  `Tensor::fromData`
-- cross‑device copies through `Tensor::to` with zero‑copy when devices match
-- allocation profiling that logs to `/tmp/orchard_tensor_profile.log` and
-  `dump_live_tensors()` for debugging
-- seeded autograd scaffold with `Tensor::requires_grad`, gradient storage, and
-  a graph of `Node` objects driving `backward`
-- Metal compute kernels beginning with elementwise add, falling back to CPU
-  paths only when Metal is unavailable
+## Repository Overview
+- `metal-tensor/` contains the primary library. Its `metal/` tree defines `Storage`, `Tensor`, `Node`, and auxiliary infrastructure, while `tests/` verifies contiguity semantics, host and device copies through `Tensor::to`, allocation profiling via `dump_live_tensors`, and gradient propagation using the `backward` routine.
+- `experimental/` carries the historical PyTorch bridge. Its `orchard_ops/` folder builds C++ and Python extension modules, `benchmarks/` and `tests/` exercise them under PyTorch, and `kernel_lib/` stores prebuilt FlashAttention binaries. The `data/` and `runs/` directories hold transient datasets and benchmark outputs and remain untracked by Git to avoid committing large artifacts. The bridge is disabled by default and only compiles when configuration passes -DORCHARD_BUILD_EXPERIMENTAL=ON and runtime sets USE_FLASH_ATTN to 2.
+- `docs/` collects narrative material including design notes and project status reports.
+- `.github/` defines the continuous integration pipeline in `workflows/macos.yml`.
+- The repository root hosts `CMakeLists.txt` for configuring all targets and a `build/` directory is created by contributors to hold generated files.
+
+## Feature Highlights
+- Rank-eight shape representation with explicit stride control for advanced view and slice operations.
+- Intrusive reference counted `Storage` objects that permit zero-copy wrapping of external buffers through `Tensor::fromData`.
+- Host and device transfers mediated by `Tensor::to`, yielding zero-copy aliases when the destination `Device` matches the source.
+- Allocation profiling managed by `metal/common/Profiling.h`. When `ORCHARD_TENSOR_PROFILE` is present in the environment, allocation and release events stream to `/tmp/orchard_tensor_profile.log`, and `dump_live_tensors` reports outstanding buffers.
+- Autograd foundations supplied by the `requires_grad` flag, gradient accumulation in `Tensor::grad`, and a graph of `Node` and `Edge` objects traversed by `backward`.
+- Initial Metal compute kernels, located under `metal-tensor/metal/kernels/`, implementing vector addition with automatic fallback to CPU code when Metal execution is unavailable.
 
 ## Building
-1. Install Xcode 15+, the Metal 4 SDK, and the command line tools
-2. Configure the project from the repository root:
-   ```bash
-   cmake -S . -B build -G Ninja
-   ```
-   The Ninja generator matches the GitHub Actions workflow.
-3. Build the static libraries and unit tests:
-   ```bash
-   cmake --build build
-   ```
-4. Pass `-DORCHARD_BUILD_EXPERIMENTAL=ON` during configuration to compile the
-   legacy PyTorch bridge
+1. Install Xcode 15+, the Metal 4 SDK, and the command line tools.
+2. From the repository root run cmake -S . -B build -G Ninja to produce build files in the `build/` directory. The Ninja generator matches the GitHub Actions workflow.
+3. Invoke cmake --build build to compile the static libraries and unit tests. Pass -DORCHARD_BUILD_EXPERIMENTAL=ON during configuration to compile the legacy PyTorch bridge.
+4. Linux hosts lack the required toolchain; running the above commands still provides diagnostic output that must be included in pull requests.
 
 ## Testing
-Run the full test suite, which exercises CPU and Metal paths, with:
-```bash
-cmake --build build --target test
-```
-Always attempt to configure and run tests before submitting a pull request.
-Even on systems lacking the Metal SDK, a failing configuration still provides
-useful diagnostics.
+Run cmake --build build --target test to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks, and autograd gradients. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
 
-## Autograd
-Tensors opt into gradient tracking via `requires_grad`. Operations such as
-`Tensor::add` register `Node` objects in a directed graph. Calling `backward`
-traverses this graph and populates `Tensor::grad` tensors on leaf nodes. The
-current implementation covers elementwise add; more operators will follow.
+## Autograd Notes
+Tensors opt into gradient tracking through the requires_grad property. Operations such as Tensor::add register Node instances connected by Edge relationships. Calling backward performs a reverse traversal to populate Tensor::grad on leaf tensors. Only elementwise addition is currently implemented; further differentiable operators will expand the graph.
 
 ## Continuous Integration
-GitHub Actions runs on `macos-latest` and mirrors the build instructions above.
-Dependencies are installed via Homebrew, warnings are promoted to errors, and
-tests must pass for the workflow to succeed. CMake build trees and ccache
-objects are cached to accelerate incremental runs. Any build warning or test
-failure causes the pipeline to fail.
+The macOS workflow described in .github/workflows/macos.yml installs dependencies through Homebrew, configures the project with the Ninja generator, treats warnings as errors, and executes the full test suite. Build artifacts and ccache directories are cached to accelerate subsequent runs. Any warning or failing test causes the pipeline to halt.
 
-## Profiling
-Enable allocation profiling by exporting `ORCHARD_TENSOR_PROFILE=1`. All
-allocations, frees, and live tensor dumps append to
-`/tmp/orchard_tensor_profile.log`.
+## Profiling Guidance
+Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation events along with explicit dumps triggered by dump_live_tensors. Logs accumulate at /tmp/orchard_tensor_profile.log for offline inspection.
+
+## Current Status
+- Tensor v0 handles intrusive storage, host and device transfers, and validated gradients for elementwise addition.
+- The PyTorch bridge under `experimental/` remains available for regression checks but is omitted from standard builds.
+- macOS continuous integration enforces warnings-as-errors and executes the test suite; Linux hosts provide diagnostic failures only.
+- Documentation covers design specifications, tensor features, and project status but evolves with each milestone.
+
+## Milestones
+1. Fused FlashAttention backward kernels with dropout support.
+2. Removal of the PyTorch bridge once Tensor v0 reaches feature parity.
+3. Public benchmarking harness with published baselines across Apple Silicon generations.
+4. Versioned 0.1 release capturing the first stable API.
 
 ## Next Steps
-- Broaden the operator set and autograd coverage beyond elementwise add
-- Replace remaining CPU fallbacks with native Metal kernels
-- Benchmark kernel performance and publish results
+1. Extend the differentiable operator set and broaden autograd coverage.
+2. Replace CPU fallbacks with tuned Metal kernels and document performance gains.
+3. Grow the test matrix for multi-device transfers, profiling scenarios, and stress tests.
 
 ## Contributing
-Follow `AGENTS.md` for contributor guidelines and workflow.
+All contributors must read and comply with AGENTS.md. It details repository expectations, commit formatting, the requirement to use `rg` for searches, and the mandatory build and test steps that precede every pull request.

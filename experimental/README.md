@@ -1,20 +1,32 @@
 # Experimental Code
 
-This directory houses legacy PyTorch-based code and other artifacts kept for
-reference while the new Metal tensor stack is developed. None of these files
-are required to build or test the core libraries.
+The `experimental` directory preserves the legacy PyTorch bridge used before Tensor v0 matured. None of these files are required for the core build; the entire tree is quarantined and only compiled when explicitly requested.
 
-Contents include:
-- `orchard_ops` – PyTorch extension modules
-- `benchmarks`, `scripts`, `tests` – tooling and test suites that rely on
-  PyTorch
-- `kernel_lib` – prebuilt FlashAttention kernels
+## Directory map
+- `orchard_ops/` contains C++ and Python extension modules that interface with PyTorch.
+- `benchmarks/`, `scripts/`, and `tests/` provide harnesses and verification suites driven by PyTorch.
+- `kernel_lib/` stores prebuilt FlashAttention dynamic libraries consumed by the extensions.
+- `data/` and `runs/` act as drop zones for datasets and benchmark outputs. Both paths are ignored by Git so large artifacts never enter version control.
 
-The FlashAttention path exposes a forward-only Metal kernel that can be enabled
-with `USE_FLASH_ATTN=2`. It matches PyTorch numerically but currently offers
-speedups only at long sequence lengths and falls back to CPU for the backward
-pass. PyTorch and its dependencies must be installed to run these examples or
-tests.
+## Usage notes
+- The bridge is excluded from normal builds. Configure with -DORCHARD_BUILD_EXPERIMENTAL=ON to enable it.
+- FlashAttention kernels activate when the environment variable USE_FLASH_ATTN is set to 2 and the flash_attn extension is available.
+- A complete PyTorch environment is required to compile and run any code in this subtree.
 
-These files are preserved for historical context and may be removed once the
-standalone Metal stack reaches feature parity.
+## Current Status
+- Forward FlashAttention kernels run for GPT-2 attention layers when `USE_FLASH_ATTN=2`; backward paths fall back to PyTorch.
+- Benchmarks serve regression comparison only and are not optimized for new features.
+- Linux hosts can compile the extensions but execute them without Metal acceleration, limiting validation to CPU results.
+
+## Milestones
+1. Maintain compatibility with PyTorch 2.x until Tensor v0 absorbs all critical functionality.
+2. Track performance deltas as Tensor v0 kernels replace these experimental implementations.
+3. Remove the subtree once the Metal-native stack provides equivalent coverage.
+
+## Next Steps
+1. Mirror essential kernels into `metal-tensor` to reduce reliance on the bridge.
+2. Periodically rerun benchmarks to detect drift between Tensor v0 and the PyTorch baseline.
+3. Trim obsolete scripts and data to keep the directory lean until deprecation.
+
+## Deprecation
+These components remain only for historical comparison. They will be removed once the Metal stack reaches feature parity and no longer relies on PyTorch.
