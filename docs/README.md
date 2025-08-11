@@ -23,7 +23,7 @@ The `docs` directory collects narrative material that spans the entire project. 
 3. Cross-link design notes and tutorials so related topics remain easy to navigate.
 
 ## Benchmarks
-Scripts in `../benchmarks` record hardware information, runtime flags beginning with `ORCHARD_`, and kernel timings. Invoke `python benchmarks/run.py -o /tmp/bench` after building to generate a JSON file under `/tmp/bench/<commit>/benchmarks.json`.
+Scripts in `../benchmarks` record hardware information, runtime flags beginning with `ORCHARD_`, and kernel timings. Invoke `python benchmarks/run.py -o /tmp/bench` after building to generate a JSON file under `/tmp/bench/<commit>/benchmarks.json`. Results are untracked, and the `Benchmarks` workflow can be triggered manually to archive the JSON. See `../AGENTS.md` for the repository benchmark protocol.
 
 ## Guidelines
 - Expand these documents whenever significant features land or roadmap items change.

@@ -339,6 +339,96 @@ TEST(TensorTest, AutogradAddMetal) {
     EXPECT_FLOAT_EQ(bgp[i], 1.0f);
   }
 }
+
+TEST(TensorTest, AutogradMatmulMetal) {
+  std::array<std::int64_t, 8> aShape{2, 3, 1, 1, 1, 1, 1, 1};
+  std::array<std::int64_t, 8> bShape{3, 2, 1, 1, 1, 1, 1, 1};
+  Tensor ac = Tensor::empty(aShape, DType::f32, Device::cpu);
+  Tensor bc = Tensor::empty(bShape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(ac.data_ptr());
+  auto *bp = static_cast<float *>(bc.data_ptr());
+  for (int i = 0; i < 6; ++i) {
+    ap[i] = static_cast<float>(i + 1);
+    bp[i] = static_cast<float>(i + 1);
+  }
+  ac.set_requires_grad(true);
+  bc.set_requires_grad(true);
+  Tensor cc = ac.matmul(bc);
+  cc.backward();
+  Tensor ag_exp = ac.grad();
+  Tensor bg_exp = bc.grad();
+
+  Tensor a = Tensor::empty(aShape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(bShape, DType::f32, Device::cpu);
+  std::memcpy(a.data_ptr(), ac.data_ptr(), 6 * sizeof(float));
+  std::memcpy(b.data_ptr(), bc.data_ptr(), 6 * sizeof(float));
+  a.set_requires_grad(true);
+  b.set_requires_grad(true);
+  Tensor ma = a.to(Device::mps);
+  Tensor mb = b.to(Device::mps);
+  Tensor c = ma.matmul(mb);
+  c.backward();
+  Tensor ag = ma.grad().to(Device::cpu);
+  Tensor bg = mb.grad().to(Device::cpu);
+  auto *agp = static_cast<float *>(ag.data_ptr());
+  auto *bgp = static_cast<float *>(bg.data_ptr());
+  auto *ag_exp_p = static_cast<float *>(ag_exp.data_ptr());
+  auto *bg_exp_p = static_cast<float *>(bg_exp.data_ptr());
+  for (int i = 0; i < 6; ++i)
+    EXPECT_FLOAT_EQ(agp[i], ag_exp_p[i]);
+  for (int i = 0; i < 6; ++i)
+    EXPECT_FLOAT_EQ(bgp[i], bg_exp_p[i]);
+}
+
+TEST(TensorTest, AutogradSumMetal) {
+  std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
+  Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *p = static_cast<float *>(t.data_ptr());
+  for (int i = 0; i < 4; ++i)
+    p[i] = static_cast<float>(i + 1);
+  t.set_requires_grad(true);
+  Tensor m = t.to(Device::mps);
+  Tensor s = m.sum();
+  s.backward();
+  Tensor g = m.grad().to(Device::cpu);
+  auto *gp = static_cast<float *>(g.data_ptr());
+  for (int i = 0; i < 4; ++i)
+    EXPECT_FLOAT_EQ(gp[i], 1.0f);
+}
+
+TEST(TensorTest, AutogradMeanMetal) {
+  std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
+  Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *p = static_cast<float *>(t.data_ptr());
+  for (int i = 0; i < 4; ++i)
+    p[i] = static_cast<float>(i + 1);
+  t.set_requires_grad(true);
+  Tensor m = t.to(Device::mps);
+  Tensor s = m.mean();
+  s.backward();
+  Tensor g = m.grad().to(Device::cpu);
+  auto *gp = static_cast<float *>(g.data_ptr());
+  for (int i = 0; i < 4; ++i)
+    EXPECT_FLOAT_EQ(gp[i], 0.25f);
+}
+
+TEST(TensorTest, AutogradViewMetal) {
+  std::array<std::int64_t, 8> shape{2, 2, 1, 1, 1, 1, 1, 1};
+  Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *p = static_cast<float *>(t.data_ptr());
+  for (int i = 0; i < 4; ++i)
+    p[i] = 1.0f;
+  t.set_requires_grad(true);
+  Tensor m = t.to(Device::mps);
+  std::array<std::int64_t, 8> newShape{4, 1, 1, 1, 1, 1, 1, 1};
+  Tensor v = m.view(newShape);
+  Tensor s = v.sum();
+  s.backward();
+  Tensor g = m.grad().to(Device::cpu);
+  auto *gp = static_cast<float *>(g.data_ptr());
+  for (int i = 0; i < 4; ++i)
+    EXPECT_FLOAT_EQ(gp[i], 1.0f);
+}
 #endif
 
 TEST(AllocatorTest, ArenaStress) {

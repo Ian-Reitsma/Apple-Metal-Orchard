@@ -7,6 +7,7 @@
 - zero-copy CPU and GPU transfers that share underlying storage when devices match
 - allocation profiling with live tensor dumps for leak analysis
 - matmul, sum, mean, and view gradients extending the autograd graph beyond elementwise add
+- Metal kernels drive forward and backward passes for matmul and whole-tensor reductions; view gradients reshape without computation
 
 ## Toolchain
 
