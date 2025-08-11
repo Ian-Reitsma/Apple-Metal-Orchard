@@ -30,8 +30,8 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 2. Run configure + tests before every PR and capture failure logs in the PR description when toolchains are missing.
 
 ## Benchmark Protocol
-- Invoke `python benchmarks/run.py -o /tmp/bench` after building to record kernel timings and hardware metadata.
-- Generated JSON results remain untracked; CI archives them as artifacts.
+- Invoke `python benchmarks/run.py -o /tmp/bench` after building to record kernel timings and hardware metadata. Results land under `/tmp/bench/<commit>/benchmarks.json`.
+- Generated JSON results remain untracked; the Benchmarks workflow uploads them as artifacts. See `docs/README.md` for interpreting outputs.
 
 ## Contribution Directives
 - C++20 and ObjC++ only; format with `clang-format`.

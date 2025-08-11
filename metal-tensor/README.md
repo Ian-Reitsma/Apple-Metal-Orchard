@@ -6,14 +6,14 @@
 - Tensor::empty, Tensor::view, Tensor::slice, and zero-copy Tensor::fromData
 - CPU and Metal transfers via Tensor::to
 - allocation profiling and dump_live_tensors for debug tracing
-- a starter autograd engine with Tensor::requires_grad, gradient tensors, and a Node and Edge graph powering backward
-- Metal compute kernels beginning with vector add and matmul, automatically selected when tensors live on an mps device
+- a starter autograd engine with Tensor::requires_grad, gradient tensors, and Node and Edge graph powering backward for matmul, reductions, and view
+- Metal compute kernels covering vector add, matmul, and whole-tensor reductions, automatically selected when tensors live on an mps device
 
 ## Current Status
 - CPU and Metal backends allocate tensors with intrusive storage and share views without copying.
 - Host and device transfers through Tensor::to round-trip data between CPU and mps devices.
 - Tests validate contiguity, profiling logs, command-queue pooling, multi-device transfers, alignment on non-contiguous views, and gradient propagation for elementwise add, matmul, reductions, and view transforms.
-- Only vector addition and matmul have dedicated Metal kernels; other operations still execute on the CPU.
+- Vector addition, matmul, and full reductions ship with Metal kernels for forward and backward paths.
 
 ## Directory map
 - `metal/` holds the implementation source

@@ -9,7 +9,11 @@ from pathlib import Path
 
 
 def collect_metadata() -> dict:
-    commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+    commit = (
+        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        .decode()
+        .strip()
+    )
     orchard_env = {k: v for k, v in os.environ.items() if k.startswith("ORCHARD_")}
     return {
         "commit": commit,
@@ -33,6 +37,10 @@ def main() -> None:
     opts = parser.parse_args()
 
     bench_bin = Path("build/benchmarks/orchard_bench")
+    if not bench_bin.exists():
+        raise FileNotFoundError(
+            f"{bench_bin} missing; run 'cmake --build build --target orchard_bench'"
+        )
     kernels = [
         ("add", ["1000000"]),
         ("mul", ["1000000"]),
