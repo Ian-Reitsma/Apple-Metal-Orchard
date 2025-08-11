@@ -12,23 +12,26 @@ MatmulBackward::MatmulBackward(const Tensor &aa, const Tensor &bb)
 
 void MatmulBackward::apply(Tensor &g) {
   auto m = a.shape()[0];
-  auto k = a.shape()[1];
   auto n = b.shape()[1];
-  Tensor ga = Tensor::empty(a.shape(), DType::f32, g.device());
-  Tensor gb = Tensor::empty(b.shape(), DType::f32, g.device());
-  if (g.device() == Device::mps) {
+  auto k = a.shape()[1];
+  Device dev = g.device();
+  Tensor ga = Tensor::empty(a.shape(), DType::f32, dev);
+  Tensor gb = Tensor::empty(b.shape(), DType::f32, dev);
+  Tensor aa = a.to(dev);
+  Tensor bb = b.to(dev);
+  if (dev == Device::mps) {
     runtime::metal_matmul_backward_a(static_cast<const float *>(g.data_ptr()),
-                                     static_cast<const float *>(b.data_ptr()),
+                                     static_cast<const float *>(bb.data_ptr()),
                                      static_cast<float *>(ga.data_ptr()), m, n,
                                      k);
     runtime::metal_matmul_backward_b(static_cast<const float *>(g.data_ptr()),
-                                     static_cast<const float *>(a.data_ptr()),
+                                     static_cast<const float *>(aa.data_ptr()),
                                      static_cast<float *>(gb.data_ptr()), m, n,
                                      k);
   } else {
-    auto *gp = static_cast<const float *>(g.data_ptr());
-    auto *bp = static_cast<const float *>(b.data_ptr());
-    auto *ap = static_cast<const float *>(a.data_ptr());
+    const auto *gp = static_cast<const float *>(g.data_ptr());
+    const auto *bp = static_cast<const float *>(bb.data_ptr());
+    const auto *ap = static_cast<const float *>(aa.data_ptr());
     auto *gap = static_cast<float *>(ga.data_ptr());
     auto *gbp = static_cast<float *>(gb.data_ptr());
     for (std::size_t i = 0; i < static_cast<std::size_t>(m); ++i) {
