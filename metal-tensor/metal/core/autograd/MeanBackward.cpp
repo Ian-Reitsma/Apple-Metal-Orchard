@@ -11,7 +11,8 @@ MeanBackward::MeanBackward(const Tensor &aa) : a(aa) {}
 
 void MeanBackward::apply(Tensor &g) {
   Tensor grad = Tensor::empty(a.shape(), DType::f32, g.device());
-  float v = *static_cast<float *>(g.to(Device::cpu).data_ptr());
+  Tensor g_cpu = g.to(Device::cpu);
+  float v = *static_cast<float *>(g_cpu.data_ptr());
   v /= static_cast<float>(a.numel());
   if (g.device() == Device::mps) {
     runtime::metal_fill(static_cast<float *>(grad.data_ptr()), v, a.numel());

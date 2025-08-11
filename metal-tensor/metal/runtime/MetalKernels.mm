@@ -164,6 +164,7 @@ void metal_reduce_sum(const float *a, float *out, std::size_t n) {
   ctx.return_command_queue(queue);
 }
 
+// Parameters follow (m, n, k)
 void metal_matmul_backward_a(const float *g, const float *b, float *ga,
                              std::size_t m, std::size_t n, std::size_t k) {
   static id<MTLComputePipelineState> pipeline = nil;
@@ -207,6 +208,7 @@ void metal_matmul_backward_a(const float *g, const float *b, float *ga,
   ctx.return_command_queue(queue);
 }
 
+// Parameters follow (m, n, k)
 void metal_matmul_backward_b(const float *g, const float *a, float *gb,
                              std::size_t m, std::size_t n, std::size_t k) {
   static id<MTLComputePipelineState> pipeline = nil;
@@ -315,6 +317,7 @@ void metal_reduce_sum(const float *a, float *out, std::size_t n) {
   out[0] = s;
 }
 
+// Parameters follow (m, n, k)
 void metal_matmul_backward_a(const float *g, const float *b, float *ga,
                              std::size_t m, std::size_t n, std::size_t k) {
   for (std::size_t i = 0; i < m; ++i) {
@@ -327,6 +330,7 @@ void metal_matmul_backward_a(const float *g, const float *b, float *ga,
   }
 }
 
+// Parameters follow (m, n, k)
 void metal_matmul_backward_b(const float *g, const float *a, float *gb,
                              std::size_t m, std::size_t n, std::size_t k) {
   for (std::size_t i = 0; i < k; ++i) {
