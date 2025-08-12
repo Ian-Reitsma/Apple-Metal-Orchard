@@ -2,8 +2,10 @@ add_library(orchard_core STATIC
   metal/core/core.cpp
   metal/core/autograd/Node.cpp
   metal/core/autograd/MatmulBackward.cpp
+  metal/core/autograd/MulBackward.cpp
   metal/core/autograd/MeanBackward.cpp
   metal/core/autograd/SumBackward.cpp
+  metal/core/autograd/TransposeBackward.cpp
   metal/core/autograd/ViewBackward.cpp
   metal/core/tensor/Tensor.cpp
   metal/core/tensor/Debug.cpp

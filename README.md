@@ -14,7 +14,7 @@
 - Intrusive reference counted `Storage` objects that permit zero-copy wrapping of external buffers through `Tensor::fromData`.
 - Host and device transfers mediated by `Tensor::to`, yielding zero-copy aliases when the destination `Device` matches the source.
 - Allocation profiling managed by `metal/common/Profiling.h`. When `ORCHARD_TENSOR_PROFILE` is present in the environment, allocation and release events stream to `/tmp/orchard_tensor_profile.log`, and `dump_live_tensors` reports outstanding buffers.
-- Autograd foundations supplied by the `requires_grad` flag, gradient accumulation in `Tensor::grad`, and dedicated nodes for matmul, reductions, view, and elementwise add.
+- Autograd foundations supplied by the `requires_grad` flag, gradient accumulation in `Tensor::grad`, and dedicated nodes for matmul, reductions, view, elementwise add and multiply, and transpose.
 - Initial Metal compute kernels, located under `metal-tensor/metal/kernels/`, implementing vector addition, matmul, and whole-tensor reductions with automatic fallback to CPU code when Metal execution is unavailable.
 
 ## Building
@@ -27,7 +27,7 @@
 Run cmake --build build --target test to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks, and autograd gradients. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
 
 ## Autograd Notes
-Tensors opt into gradient tracking through the requires_grad property. Operations such as Tensor::add, Tensor::matmul, Tensor::sum, Tensor::mean, and Tensor::view register Node instances connected by Edge relationships. Calling backward performs a reverse traversal to populate Tensor::grad on leaf tensors. Matmul, reductions, view, and elementwise add are currently implemented.
+Tensors opt into gradient tracking through the requires_grad property. Operations such as Tensor::add, Tensor::mul, Tensor::matmul, Tensor::sum, Tensor::mean, Tensor::transpose, and Tensor::view register Node instances connected by Edge relationships. Calling backward performs a reverse traversal to populate Tensor::grad on leaf tensors. Matmul, reductions, view, elementwise add and multiply, and transpose are currently implemented.
 
 ## Continuous Integration
 The macOS workflow described in .github/workflows/macos.yml installs dependencies through Homebrew, configures the project with the Ninja generator, treats warnings as errors, and executes the full test suite. Build artifacts and ccache directories are cached to accelerate subsequent runs. Any warning or failing test causes the pipeline to halt.
@@ -36,7 +36,7 @@ The macOS workflow described in .github/workflows/macos.yml installs dependencie
 Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation events along with explicit dumps triggered by dump_live_tensors. Logs accumulate at /tmp/orchard_tensor_profile.log for offline inspection.
 
 ## Current Status
-- Tensor v0 handles intrusive storage, host and device transfers, and validated gradients for matmul, reductions, view, and elementwise addition.
+- Tensor v0 handles intrusive storage, host and device transfers, and validated gradients for matmul, reductions, view, elementwise addition and multiply, and transpose.
 - The PyTorch bridge under `experimental/` remains available for regression checks but is omitted from standard builds.
 - macOS continuous integration enforces warnings-as-errors and executes the test suite; Linux hosts provide diagnostic failures only.
 - Documentation covers design specifications, tensor features, and project status but evolves with each milestone.
