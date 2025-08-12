@@ -31,3 +31,11 @@ The `experimental` directory preserves the legacy PyTorch bridge used before Ten
 
 ## Deprecation
 These components remain only for historical comparison. They will be removed once the Metal stack reaches feature parity and no longer relies on PyTorch.
+
+## Contributor Protocol
+- Follow `../AGENTS.md` for all repository rules even when working in this experimental subtree.
+- Configure and test the project with `cmake -S . -B build -G Ninja` and `cmake --build build --target test`; include any failures in pull requests.
+- Use `rg` for code searches; avoid recursive `ls` or `grep` commands.
+- Do not commit datasets, run outputs, or other generated files. The `data/` and `runs/` directories remain untracked to keep large artifacts out of version control.
+- Format C++ and Python sources consistently and keep commits to a single logical change with an imperative summary line.
+- Reference modified files by path and line number in the pull request message and work only on the default branch.

@@ -1,4 +1,4 @@
-#include "MulBackward.h"
+#include "AddBackward.h"
 
 using namespace orchard::core::tensor;
 
@@ -56,9 +56,9 @@ bool compute_broadcast(const std::array<std::int64_t, 8> &a_shape,
 }
 } // namespace
 
-MulBackward::MulBackward(const Tensor &aa, const Tensor &bb) : a(aa), b(bb) {}
+AddBackward::AddBackward(const Tensor &aa, const Tensor &bb) : a(aa), b(bb) {}
 
-void MulBackward::apply(Tensor &g) {
+void AddBackward::apply(Tensor &g) {
   Tensor gg = g.to(Device::cpu);
   Tensor aa = a.to(Device::cpu);
   Tensor bb = b.to(Device::cpu);
@@ -68,8 +68,6 @@ void MulBackward::apply(Tensor &g) {
   Tensor ga = Tensor::zerosLike(aa);
   Tensor gb = Tensor::zerosLike(bb);
   auto *gp = static_cast<const float *>(gg.data_ptr());
-  auto *ap = static_cast<const float *>(aa.data_ptr());
-  auto *bp = static_cast<const float *>(bb.data_ptr());
   auto *gap = static_cast<float *>(ga.data_ptr());
   auto *gbp = static_cast<float *>(gb.data_ptr());
   std::array<std::int64_t, 8> idx{};
@@ -77,8 +75,8 @@ void MulBackward::apply(Tensor &g) {
   std::int64_t bo = bb.offset();
   for (std::size_t i = 0; i < n; ++i) {
     float gv = gp[i];
-    gap[ao] += gv * bp[bo];
-    gbp[bo] += gv * ap[ao];
+    gap[ao] += gv;
+    gbp[bo] += gv;
     for (int d = 7; d >= 0; --d) {
       idx[d]++;
       ao += info.a_strides[d];

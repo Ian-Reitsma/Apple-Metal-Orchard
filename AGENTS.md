@@ -44,12 +44,20 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - Reference touched files by path and line number in pull request descriptions.
 - Work exclusively on the default branch and refrain from creating new branches within this repository.
 - Keep the CI matrix green. macOS runners for `macos-13` and `macos-14` must pass; the Linux diagnostic job may fail but its logs require review before merging.
+- Every directory containing a `README.md` must expose a `Contributor Protocol` section that points back to this manual. Whenever repository guidelines change, update every README to keep that section in sync.
 
 ## Workflow Checklist
 1. Run `cmake -S . -B build -G Ninja` from the repository root.
 2. Invoke `cmake --build build --target test` and note any errors.
 3. Stage changes with `git add` and create a single commit per task.
 4. Formulate a pull request summarizing the intent, the files modified, and the test outcomes.
+
+## Documentation Discipline
+- Treat this file as the canonical reference for repository policy. Read it in full before editing any file.
+- README files and documents under `docs/` must mirror the current guidance. When you revise instructions here, propagate equivalent wording to all README files in the tree.
+- Use inline code for commands and identifiers; never introduce fenced code blocks in documentation or commit messages.
+- Cite file paths and line numbers in pull requests so reviewers can locate changes quickly.
+- Omit placeholder text. If a task cannot be completed, mark incomplete work with a TODO comment and document the limitation in the pull request.
 
 ## Current Status
 - Tensor v0 now layers elementwise division, constant filling, and explicit detachment on top of intrusive storage and host and device transfer paths.

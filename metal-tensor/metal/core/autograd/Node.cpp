@@ -16,9 +16,13 @@ void Node::accumulate(Tensor &t, const Tensor &grad) {
     t.set_grad(Tensor::zerosLike(t));
   auto n = t.numel();
   if (t.grad().device() == Device::mps) {
-    orchard::runtime::metal_add(static_cast<const float *>(grad.data_ptr()),
-                                static_cast<const float *>(t.grad().data_ptr()),
-                                static_cast<float *>(t.grad().data_ptr()), n);
+    auto shape = t.shape();
+    auto strides = t.strides();
+    orchard::runtime::metal_add(
+        static_cast<const float *>(grad.data_ptr()),
+        static_cast<const float *>(t.grad().data_ptr()),
+        static_cast<float *>(t.grad().data_ptr()), shape.data(),
+        strides.data(), strides.data(), n);
   } else {
     orchard::runtime::cpu_context().add(
         static_cast<const float *>(grad.data_ptr()),

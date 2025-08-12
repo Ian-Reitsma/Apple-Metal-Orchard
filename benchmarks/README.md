@@ -9,3 +9,12 @@ Benchmark outputs are untracked; generate them locally as needed and attach rele
 
 ## Result Format
 Each JSON file includes a top-level dictionary keyed by operation name. Entries record average runtime in microseconds, tensor shapes, data types, and whether the kernel executed on the CPU or an mps device. Hardware metadata such as processor model and memory configuration appears under the `system` key.
+
+## Contributor Protocol
+- Consult `../AGENTS.md` for the authoritative repository policy.
+- Run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root before pushing changes; include any diagnostic output in pull requests.
+- Search the repository with `rg` rather than `ls -R` or `grep -R`.
+- Do not commit generated JSON outputs or any file exceeding five megabytes.
+- Use `clang-format` for C++ and Objective-C++ sources.
+- Keep commits single-purpose with an imperative one-line summary and reference touched files by path and line number in the pull request.
+- Work on the default branch only and ensure the worktree is clean after committing.

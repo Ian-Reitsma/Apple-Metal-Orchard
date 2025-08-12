@@ -30,3 +30,11 @@ Scripts in `../benchmarks` record hardware information, runtime flags beginning 
 - Expand these documents whenever significant features land or roadmap items change.
 - Reference identifiers with inline code and avoid fenced code blocks.
 - Ensure any added file fits within the repository’s 5 MB artifact limit.
+
+## Contributor Protocol
+- Read `../AGENTS.md` before editing documentation; it describes required build and test steps and repository etiquette.
+- Run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root prior to opening a pull request; capture any failing output.
+- Search with `rg` instead of recursive `ls` or `grep`.
+- Keep documentation free of fenced code blocks; use inline code to reference commands and identifiers.
+- Commit messages must be a single imperative line and pull requests should reference modified files by path and line number.
+- Do not commit generated files or assets larger than five megabytes.

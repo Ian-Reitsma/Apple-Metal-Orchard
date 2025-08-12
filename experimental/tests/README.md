@@ -9,3 +9,11 @@ Execute the tests with `pytest` from this directory. Ensure PyTorch and all requ
 
 ## Next Steps
 Expand or retire these tests as the Metal-native stack reaches parity and the experimental path is removed. Recent additions verify gradients for FlashAttention with dropout enabled, providing coverage while the fused Metal kernels mature.
+
+## Contributor Protocol
+- Refer to `../../AGENTS.md` for project-wide procedures on building, testing, and committing.
+- Before modifying tests, run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root, capturing all output.
+- Use `rg` for repository searches; avoid recursive directory scans with `ls -R` or `grep -R`.
+- Do not check in test artifacts or datasets; keep large files under untracked directories.
+- Each commit must have a single imperative summary line and pull requests must cite modified files by path and line number.
+- Work solely on the default branch and ensure the worktree is clean after committing.
