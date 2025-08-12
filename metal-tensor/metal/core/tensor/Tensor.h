@@ -55,6 +55,7 @@ public:
   std::int64_t offset() const { return impl_->offset; }
   [[nodiscard]] Tensor clone() const;
   [[nodiscard]] Tensor detach() const;
+  [[nodiscard]] bool is_alias_of(const Tensor &other) const;
 
   DType dtype() const { return impl_->dtype; }
   Device device() const { return impl_->device; }
@@ -70,9 +71,16 @@ public:
 
   bool requires_grad() const { return requires_grad_; }
   void set_requires_grad(bool v) { requires_grad_ = v; }
-  const Tensor &grad() const { return grad_; }
-  Tensor &grad() { return grad_; }
-  void set_grad(const Tensor &g) { grad_ = g; }
+  const Tensor &grad() const {
+    static Tensor empty_grad;
+    return grad_ ? *grad_ : empty_grad;
+  }
+  Tensor &grad() {
+    if (!grad_)
+      grad_ = std::make_unique<Tensor>();
+    return *grad_;
+  }
+  void set_grad(const Tensor &g) { grad() = g; }
   std::shared_ptr<autograd::Node> grad_fn() const { return grad_fn_; }
   void set_grad_fn(std::shared_ptr<autograd::Node> fn) {
     grad_fn_ = std::move(fn);
@@ -81,7 +89,7 @@ public:
 private:
   TensorImpl *impl_{nullptr};
   bool requires_grad_{false};
-  Tensor grad_{};
+  std::unique_ptr<Tensor> grad_{};
   std::shared_ptr<autograd::Node> grad_fn_{};
 };
 

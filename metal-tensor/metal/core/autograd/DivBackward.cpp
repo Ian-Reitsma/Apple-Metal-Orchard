@@ -1,4 +1,5 @@
 #include "DivBackward.h"
+#include "../../runtime/MetalKernels.h"
 
 using namespace orchard::core::tensor;
 
@@ -60,42 +61,57 @@ DivBackward::DivBackward(const Tensor &aa, const Tensor &bb, bool s)
     : a(aa), b(bb), safe(s) {}
 
 void DivBackward::apply(Tensor &g) {
-  Tensor gg = g.to(Device::cpu);
-  Tensor aa = a.to(Device::cpu);
-  Tensor bb = b.to(Device::cpu);
-  BroadcastInfo info{};
-  compute_broadcast(aa.shape(), aa.strides(), bb.shape(), bb.strides(), info);
-  std::size_t n = numel(info.shape);
-  Tensor ga = Tensor::zerosLike(aa);
-  Tensor gb = Tensor::zerosLike(bb);
-  auto *gp = static_cast<const float *>(gg.data_ptr());
-  auto *ap = static_cast<const float *>(aa.data_ptr());
-  auto *bp = static_cast<const float *>(bb.data_ptr());
-  auto *gap = static_cast<float *>(ga.data_ptr());
-  auto *gbp = static_cast<float *>(gb.data_ptr());
-  std::array<std::int64_t, 8> idx{};
-  std::int64_t ao = aa.offset();
-  std::int64_t bo = bb.offset();
-  for (std::size_t i = 0; i < n; ++i) {
-    float gv = gp[i];
-    float bv = bp[bo];
-    if (!(safe && bv == 0.0f)) {
-      gap[ao] += gv / bv;
-      gbp[bo] += -gv * ap[ao] / (bv * bv);
+  if (g.device() == Device::mps) {
+    std::size_t n = g.numel();
+    Tensor ga = Tensor::zerosLike(a);
+    Tensor gb = Tensor::zerosLike(b);
+    runtime::metal_div_backward_a(static_cast<const float *>(g.data_ptr()),
+                                  static_cast<const float *>(b.data_ptr()),
+                                  static_cast<float *>(ga.data_ptr()), n);
+    runtime::metal_div_backward_b(static_cast<const float *>(g.data_ptr()),
+                                  static_cast<const float *>(a.data_ptr()),
+                                  static_cast<const float *>(b.data_ptr()),
+                                  static_cast<float *>(gb.data_ptr()), n);
+    accumulate(a, ga);
+    accumulate(b, gb);
+  } else {
+    Tensor gg = g.to(Device::cpu);
+    Tensor aa = a.to(Device::cpu);
+    Tensor bb = b.to(Device::cpu);
+    BroadcastInfo info{};
+    compute_broadcast(aa.shape(), aa.strides(), bb.shape(), bb.strides(), info);
+    std::size_t n = numel(info.shape);
+    Tensor ga = Tensor::zerosLike(aa);
+    Tensor gb = Tensor::zerosLike(bb);
+    auto *gp = static_cast<const float *>(gg.data_ptr());
+    auto *ap = static_cast<const float *>(aa.data_ptr());
+    auto *bp = static_cast<const float *>(bb.data_ptr());
+    auto *gap = static_cast<float *>(ga.data_ptr());
+    auto *gbp = static_cast<float *>(gb.data_ptr());
+    std::array<std::int64_t, 8> idx{};
+    std::int64_t ao = aa.offset();
+    std::int64_t bo = bb.offset();
+    for (std::size_t i = 0; i < n; ++i) {
+      float gv = gp[i];
+      float bv = bp[bo];
+      if (!(safe && bv == 0.0f)) {
+        gap[ao] += gv / bv;
+        gbp[bo] += -gv * ap[ao] / (bv * bv);
+      }
+      for (int d = 7; d >= 0; --d) {
+        idx[d]++;
+        ao += info.a_strides[d];
+        bo += info.b_strides[d];
+        if (idx[d] < info.shape[d])
+          break;
+        idx[d] = 0;
+        ao -= info.a_strides[d] * info.shape[d];
+        bo -= info.b_strides[d] * info.shape[d];
+      }
     }
-    for (int d = 7; d >= 0; --d) {
-      idx[d]++;
-      ao += info.a_strides[d];
-      bo += info.b_strides[d];
-      if (idx[d] < info.shape[d])
-        break;
-      idx[d] = 0;
-      ao -= info.a_strides[d] * info.shape[d];
-      bo -= info.b_strides[d] * info.shape[d];
-    }
+    accumulate(a, ga.to(a.device()));
+    accumulate(b, gb.to(b.device()));
   }
-  accumulate(a, ga.to(a.device()));
-  accumulate(b, gb.to(b.device()));
   if (a.grad_fn())
     a.grad_fn()->apply(a.grad());
   if (b.grad_fn())

@@ -61,6 +61,8 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 
 ## Current Status
 - Tensor v0 now layers elementwise division, constant filling, and explicit detachment on top of intrusive storage and host and device transfer paths.
+- Division backward dispatches by device, allowing CPU-only builds without Metal.
+- Detached views share storage; `Tensor::is_alias_of` verifies aliasing and tests mutate through detached tensors and clone-before-detach paths.
 - A dedicated Metal kernel drives `Tensor::mean`, removing the final CPU post-processing step and aligning performance across devices.
 - Benchmarks cover add, mul, matmul, reduce_sum, mean, and transpose and log results beneath commit-specific directories for reproducible performance tracking.
 - The legacy PyTorch bridge persists under `experimental/` but is excluded from default builds.
@@ -74,7 +76,9 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 4. Cut a 0.1 release that freezes the API and tags the first feature-complete snapshot.
 
 ## Next Steps
-1. Extend differentiable operations to include additional elementwise and reduction primitives beyond add, mul, div, and mean.
-2. Replace remaining CPU fallbacks with tuned Metal kernels and delete redundant host code.
-3. Grow the test matrix to cover multi-device transfers, profiling scenarios, and stress conditions.
-4. Stand up a benchmarking harness that records hardware, runtime flags, and kernel timing for every commit while archiving JSON outputs per commit.
+1. Fix CMake configuration on non-Apple platforms so CPU-only builds succeed without Objective-C++.
+2. Vendor or locate GoogleTest locally to remove network dependencies from the test build.
+3. Extend differentiable operations to include additional elementwise and reduction primitives beyond add, mul, div, and mean.
+4. Replace remaining CPU fallbacks with tuned Metal kernels and delete redundant host code.
+5. Grow the test matrix to cover multi-device transfers, profiling scenarios, and stress conditions.
+6. Stand up a benchmarking harness that records hardware, runtime flags, and kernel timing for every commit while archiving JSON outputs per commit.
