@@ -1,5 +1,10 @@
 # GoogleTest
 
+This directory hosts a trimmed copy of GoogleTest v1.14.0. Only `googletest/include` and `googletest/src` remain so the test suite builds without network access. Retrieve additional tests, samples, or documentation from https://github.com/google/googletest when needed.
+
+## Contributor Protocol
+- See `../../AGENTS.md` for repository guidelines.
+
 ### Announcements
 
 #### Live at Head

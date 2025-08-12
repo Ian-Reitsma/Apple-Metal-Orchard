@@ -20,15 +20,15 @@ This document captures the current state of the Orchard effort and the path forw
     - division gradients dispatch by device allowing CPU-only builds without Metal
 - macOS continuous integration caches builds, treats warnings as errors, and runs the test suite on every pull request.
 - Implementation requires macOS with Xcode 15+ and the Metal 4 SDK. The project does not build in this Linux environment, but agents must still attempt configuration and report failures.
+- A minimal copy of GoogleTest resides under `third_party/googletest` so tests compile without downloads; upstream tests and samples were dropped to reduce repository size.
 
 ## Next Steps
 1. Harden the fused FlashAttention backward kernels and benchmark training loops that depend on dropout.
 2. Extend the Tensor v0 operator set and expand autograd coverage beyond division, mean, and transpose.
 3. Replace remaining CPU fallbacks with optimised Metal kernels.
 4. Fix CMake configuration on non-Apple platforms so CPU-only builds and tests succeed without Objective-C++.
-5. Vendor or locate GoogleTest locally to remove network dependencies from the test build.
-6. Keep macOS CI green and broaden the matrix as needed.
-7. Benchmark FlashAttention and core tensor ops and publish performance data.
+5. Keep macOS CI green and broaden the matrix as needed.
+6. Benchmark FlashAttention and core tensor ops and publish performance data.
 
 ## Milestones
 1. FlashAttention backward kernels with dropout support unlocking end-to-end training benchmarks.
