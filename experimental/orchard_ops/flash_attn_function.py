@@ -36,7 +36,7 @@ def _metal_kernel_available():
         torch is not None
         and hasattr(torch.ops, "flash_attn_mps")
         and hasattr(torch.ops.flash_attn_mps, "_flash_attn_fwd")
-        and hasattr(torch.ops.flash_attn_mps, "_flash_attn_bwd")
+        and hasattr(torch.ops.flash_attn_mps, "_flash_attn_bwd_dropout")
     )
 
 
@@ -82,10 +82,10 @@ class FlashAttnFunction(Function):
             _fail("PyTorch not available")
         q, k, v, mask = ctx.saved_tensors
         metal_kernel_ok = hasattr(torch.ops, "flash_attn_mps") and hasattr(
-            torch.ops.flash_attn_mps, "_flash_attn_bwd"
+            torch.ops.flash_attn_mps, "_flash_attn_bwd_dropout"
         )
         if metal_kernel_ok:
-            grad_q, grad_k, grad_v = torch.ops.flash_attn_mps._flash_attn_bwd(
+            grad_q, grad_k, grad_v = torch.ops.flash_attn_mps._flash_attn_bwd_dropout(
                 grad_out,
                 q,
                 k,

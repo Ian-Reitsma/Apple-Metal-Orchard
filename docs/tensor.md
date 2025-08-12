@@ -7,7 +7,10 @@
 - zero-copy CPU and GPU transfers that share underlying storage when devices match
 - allocation profiling with live tensor dumps for leak analysis
 - matmul, sum, mean, and view gradients extending the autograd graph beyond elementwise add
-- Metal kernels drive forward and backward passes for matmul and whole-tensor reductions; view gradients reshape without computation
+- elementwise division through `Tensor::div` with matching backward propagation
+- constant tensor filling through `Tensor::fill` which sets all elements to a value on CPU or Metal
+- explicit detachment via `Tensor::detach` that returns a view sharing storage but clearing `requires_grad` and `grad_fn`
+- Metal kernels drive forward and backward passes for matmul and whole-tensor reductions and include a dedicated mean kernel; view gradients reshape without computation
 
 ## Toolchain
 
@@ -34,6 +37,22 @@ Tensor::to moves data between devices. When source and destination devices match
 ## Allocation Profiling
 
 Set ORCHARD_TENSOR_PROFILE to one to log tensor storage allocations and frees to /tmp/orchard_tensor_profile.log. The log records alloc, free, and live events with storage labels and sizes. Call dump_live_tensors at any point to append all currently live allocations to the log. Include metal/core/tensor/Debug.h and invoke dump_live_tensors.
+
+## Constant Filling
+
+Tensor::fill sets every element of a tensor to the same value. The call dispatches to runtime::metal_fill on the mps device and executes a simple loop on the CPU.
+
+## Detaching Tensors
+
+Tensor::detach produces a view of the original tensor that shares storage but discards autograd metadata. The detached view reports `requires_grad` as false and breaks gradient propagation, allowing intermediate results to be reused without contributing to backward computations.
+
+## Elementwise Division
+
+Tensor::div divides one tensor by another or by a scalar. Gradients flow to both operands, enabling training pipelines to incorporate reciprocal scaling and normalization steps. CPU and Metal kernels provide identical semantics.
+
+## Metal Mean Kernel
+
+Tensor::mean now dispatches to a Metal kernel that performs the reduction and final division directly on the GPU, eliminating the previous host-side post-processing step and improving throughput on mps devices.
 
 ## Next Steps
 - Expand the operator set and autograd coverage

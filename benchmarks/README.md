@@ -1,11 +1,11 @@
 # Benchmarks
 
-Scripts here record hardware details, runtime flags, and kernel timings for
-Tensor v0 operations.
+Scripts here record hardware details, runtime flags prefixed with `ORCHARD_`, and kernel timings for Tensor v0 operations. Each run writes a commit-scoped JSON file that captures the short Git hash, device information, and per-op microsecond measurements so contributors can track performance regressions over time.
 
 ## Usage
-Run `python benchmarks/run.py -o /tmp/bench` after building to emit a JSON
-file under `/tmp/bench/<commit>/benchmarks.json`. The harness exercises add,
-mul, matmul, and reduce_sum kernels through the Tensor API.
+Invoke `python benchmarks/run.py -o /tmp/bench` after building to emit a JSON file under `/tmp/bench/<commit>/benchmarks.json` where `<commit>` is the short Git hash. The harness exercises add, mul, matmul, reduce_sum, mean, and transpose kernels through the Tensor API and records one entry per operation. Supplying a different output directory allows side-by-side comparisons between commits.
 
-Benchmark outputs are untracked; generate them locally as needed.
+Benchmark outputs are untracked; generate them locally as needed and attach relevant snippets to pull requests when discussing performance changes.
+
+## Result Format
+Each JSON file includes a top-level dictionary keyed by operation name. Entries record average runtime in microseconds, tensor shapes, data types, and whether the kernel executed on the CPU or an mps device. Hardware metadata such as processor model and memory configuration appears under the `system` key.

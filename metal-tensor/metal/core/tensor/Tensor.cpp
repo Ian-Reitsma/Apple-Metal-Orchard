@@ -1,6 +1,7 @@
 #include "Tensor.h"
 #include "../../runtime/CpuContext.h"
 #include "../../runtime/MetalKernels.h"
+#include "../autograd/DivBackward.h"
 #include "../autograd/MatmulBackward.h"
 #include "../autograd/MeanBackward.h"
 #include "../autograd/MulBackward.h"
@@ -465,6 +466,29 @@ Tensor Tensor::mul(const Tensor &other) const {
   return out;
 }
 
+Tensor Tensor::div(const Tensor &other) const {
+  if (!impl_ || !other.impl_)
+    return Tensor{};
+  Tensor out = empty(impl_->shape, impl_->dtype, impl_->device);
+  std::size_t n = numel();
+  if (impl_->device == Device::cpu) {
+    auto *ap = static_cast<const float *>(data_ptr());
+    auto *bp = static_cast<const float *>(other.data_ptr());
+    auto *op = static_cast<float *>(out.data_ptr());
+    for (std::size_t i = 0; i < n; ++i)
+      op[i] = ap[i] / bp[i];
+  } else if (impl_->device == Device::mps) {
+    runtime::metal_div(static_cast<const float *>(impl_->storage->data),
+                       static_cast<const float *>(other.impl_->storage->data),
+                       static_cast<float *>(out.impl_->storage->data), n);
+  }
+  bool rg = requires_grad_ || other.requires_grad_;
+  out.set_requires_grad(rg);
+  if (rg)
+    out.set_grad_fn(std::make_shared<autograd::DivBackward>(*this, other));
+  return out;
+}
+
 Tensor Tensor::matmul(const Tensor &other) const {
   if (!impl_ || !other.impl_)
     return Tensor{};
@@ -522,15 +546,38 @@ Tensor Tensor::sum() const {
 }
 
 Tensor Tensor::mean() const {
-  Tensor s = sum();
-  if (!s.data_ptr())
-    return s;
-  float *sp = static_cast<float *>(s.data_ptr());
-  *sp /= static_cast<float>(numel());
-  if (s.requires_grad()) {
-    s.set_grad_fn(std::make_shared<autograd::MeanBackward>(*this));
+  if (!impl_)
+    return Tensor{};
+  Tensor out = empty({1, 1, 1, 1, 1, 1, 1, 1}, impl_->dtype, impl_->device);
+  if (impl_->device == Device::cpu) {
+    float s = 0.0f;
+    auto *ap = static_cast<const float *>(data_ptr());
+    for (std::size_t i = 0; i < numel(); ++i)
+      s += ap[i];
+    *static_cast<float *>(out.data_ptr()) = s / static_cast<float>(numel());
+  } else if (impl_->device == Device::mps) {
+    runtime::metal_mean(static_cast<const float *>(impl_->storage->data),
+                        static_cast<float *>(out.impl_->storage->data),
+                        numel());
   }
-  return s;
+  out.set_requires_grad(requires_grad_);
+  if (requires_grad_) {
+    out.set_grad_fn(std::make_shared<autograd::MeanBackward>(*this));
+  }
+  return out;
+}
+
+void Tensor::fill(float value) {
+  if (!impl_ || !impl_->storage)
+    return;
+  std::size_t n = numel();
+  if (impl_->device == Device::cpu) {
+    auto *p = static_cast<float *>(data_ptr());
+    for (std::size_t i = 0; i < n; ++i)
+      p[i] = value;
+  } else if (impl_->device == Device::mps) {
+    runtime::metal_fill(static_cast<float *>(impl_->storage->data), value, n);
+  }
 }
 
 std::size_t Tensor::numel() const {
@@ -596,6 +643,14 @@ Tensor Tensor::clone() const {
   }
   out.set_requires_grad(requires_grad_);
   out.set_grad_fn(grad_fn_);
+  return out;
+}
+
+Tensor Tensor::detach() const {
+  Tensor out(*this);
+  out.set_requires_grad(false);
+  out.set_grad_fn(nullptr);
+  out.set_grad(Tensor{});
   return out;
 }
 

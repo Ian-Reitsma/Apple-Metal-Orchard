@@ -14,8 +14,9 @@
 - Intrusive reference counted `Storage` objects that permit zero-copy wrapping of external buffers through `Tensor::fromData`.
 - Host and device transfers mediated by `Tensor::to`, yielding zero-copy aliases when the destination `Device` matches the source.
 - Allocation profiling managed by `metal/common/Profiling.h`. When `ORCHARD_TENSOR_PROFILE` is present in the environment, allocation and release events stream to `/tmp/orchard_tensor_profile.log`, and `dump_live_tensors` reports outstanding buffers.
-- Autograd foundations supplied by the `requires_grad` flag, gradient accumulation in `Tensor::grad`, and dedicated nodes for matmul, reductions, view, elementwise add and multiply, and transpose.
-- Initial Metal compute kernels, located under `metal-tensor/metal/kernels/`, implementing vector addition, matmul, and whole-tensor reductions with automatic fallback to CPU code when Metal execution is unavailable.
+- Autograd foundations supplied by the `requires_grad` flag, gradient accumulation in `Tensor::grad`, and dedicated nodes for matmul, reductions, view, elementwise add and multiply, transpose, and division. `Tensor::detach` returns a view that shares storage but halts gradient propagation.
+- Initial Metal compute kernels, located under `metal-tensor/metal/kernels/`, implementing vector addition, matmul, whole-tensor reductions, and a dedicated mean kernel; each operation automatically falls back to CPU code when Metal execution is unavailable.
+- Constant filling through `Tensor::fill` sets every element to a value on both CPU and Metal devices.
 
 ## Building
 1. Install Xcode 15+, the Metal 4 SDK, and the command line tools.
@@ -26,8 +27,11 @@
 ## Testing
 Run cmake --build build --target test to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks, and autograd gradients. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
 
+## Benchmarking
+Invoke `python benchmarks/run.py -o /tmp/bench` after building to capture kernel timings, hardware details, and runtime flags. Results are written to `/tmp/bench/<commit>/benchmarks.json` where `<commit>` is the short Git hash. The harness exercises addition, multiplication, matmul, reduce_sum, mean, and transpose and enables reproducible comparisons across commits.
+
 ## Autograd Notes
-Tensors opt into gradient tracking through the requires_grad property. Operations such as Tensor::add, Tensor::mul, Tensor::matmul, Tensor::sum, Tensor::mean, Tensor::transpose, and Tensor::view register Node instances connected by Edge relationships. Calling backward performs a reverse traversal to populate Tensor::grad on leaf tensors. Matmul, reductions, view, elementwise add and multiply, and transpose are currently implemented.
+Tensors opt into gradient tracking through the requires_grad property. Operations such as Tensor::add, Tensor::mul, Tensor::div, Tensor::matmul, Tensor::sum, Tensor::mean, Tensor::transpose, and Tensor::view register Node instances connected by Edge relationships. Calling backward performs a reverse traversal to populate Tensor::grad on leaf tensors. `Tensor::detach` returns a view that shares storage but discards autograd state and prevents gradients from flowing through the new tensor.
 
 ## Continuous Integration
 The macOS workflow described in .github/workflows/macos.yml installs dependencies through Homebrew, configures the project with the Ninja generator, treats warnings as errors, and executes the full test suite. Build artifacts and ccache directories are cached to accelerate subsequent runs. Any warning or failing test causes the pipeline to halt.
@@ -36,9 +40,10 @@ The macOS workflow described in .github/workflows/macos.yml installs dependencie
 Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation events along with explicit dumps triggered by dump_live_tensors. Logs accumulate at /tmp/orchard_tensor_profile.log for offline inspection.
 
 ## Current Status
-- Tensor v0 handles intrusive storage, host and device transfers, and validated gradients for matmul, reductions, view, elementwise addition and multiply, and transpose.
+- Tensor v0 handles intrusive storage, host and device transfers, elementwise division, constant filling, explicit detachment, and validated gradients for matmul, reductions, view, elementwise addition and multiply, division, and transpose.
 - The PyTorch bridge under `experimental/` remains available for regression checks but is omitted from standard builds.
 - macOS continuous integration enforces warnings-as-errors and executes the test suite; Linux hosts provide diagnostic failures only.
+- Fused FlashAttention backward kernels with dropout are present under `experimental/` and enable end-to-end gradient checks for keys and values.
 - Documentation covers design specifications, tensor features, and project status but evolves with each milestone.
 
 ## Milestones
@@ -48,9 +53,10 @@ Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation ev
 4. Versioned 0.1 release capturing the first stable API.
 
 ## Next Steps
-1. Extend the differentiable operator set and broaden autograd coverage.
+1. Extend the differentiable operator set beyond add, mul, div, mean, and transpose.
 2. Replace CPU fallbacks with tuned Metal kernels and document performance gains.
 3. Grow the test matrix for multi-device transfers, profiling scenarios, and stress tests.
+4. Iterate on FlashAttention kernels to close remaining gaps with the PyTorch baseline.
 
 ## Contributing
 All contributors must read and comply with AGENTS.md. It details repository expectations, commit formatting, the requirement to use `rg` for searches, and the mandatory build and test steps that precede every pull request.

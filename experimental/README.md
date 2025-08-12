@@ -14,7 +14,7 @@ The `experimental` directory preserves the legacy PyTorch bridge used before Ten
 - A complete PyTorch environment is required to compile and run any code in this subtree.
 
 ## Current Status
-- Forward FlashAttention kernels run for GPT-2 attention layers when `USE_FLASH_ATTN=2`; backward paths now apply a lightweight Metal stub that respects the dropout mask and scale without calling PyTorch's reference.
+- Forward FlashAttention kernels run for GPT-2 attention layers when `USE_FLASH_ATTN=2`. A fused backward kernel now applies the dropout mask, rescales gradients, and produces outputs for query, key, and value tensors.
 - The Python wrapper validates `head_dim` as a multiple of eight and enforces `dropout_p` within `[0,1)`, returning the mask alongside the attention output.
 - Benchmarks serve regression comparison only and are not optimized for new features.
 - Linux hosts can compile the extensions but execute them without Metal acceleration, limiting validation to CPU results.
