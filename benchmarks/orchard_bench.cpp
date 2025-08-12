@@ -53,11 +53,32 @@ double bench_reduce_sum(std::int64_t elements) {
   return std::chrono::duration<double>(end - start).count();
 }
 
+double bench_mean(std::int64_t elements) {
+  std::array<std::int64_t, 8> shape{elements, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::metal);
+  auto start = std::chrono::high_resolution_clock::now();
+  Tensor m = a.mean();
+  m.to(Device::cpu);
+  auto end = std::chrono::high_resolution_clock::now();
+  return std::chrono::duration<double>(end - start).count();
+}
+
+double bench_transpose(std::int64_t m, std::int64_t n) {
+  std::array<std::int64_t, 8> shape{m, n, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::metal);
+  auto start = std::chrono::high_resolution_clock::now();
+  Tensor t = a.transpose(0, 1).contiguous();
+  t.to(Device::cpu);
+  auto end = std::chrono::high_resolution_clock::now();
+  return std::chrono::duration<double>(end - start).count();
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    std::cerr << "usage: orchard_bench <add|mul|matmul|reduce_sum> [sizes]\n";
+    std::cerr << "usage: orchard_bench "
+                 "<add|mul|matmul|reduce_sum|mean|transpose> [sizes]\n";
     return 1;
   }
   std::string op = argv[1];
@@ -81,6 +102,17 @@ int main(int argc, char **argv) {
   if (op == "reduce_sum") {
     std::int64_t n = argc > 2 ? std::stoll(argv[2]) : 1000000;
     std::cout << bench_reduce_sum(n) << "\n";
+    return 0;
+  }
+  if (op == "mean") {
+    std::int64_t n = argc > 2 ? std::stoll(argv[2]) : 1000000;
+    std::cout << bench_mean(n) << "\n";
+    return 0;
+  }
+  if (op == "transpose") {
+    std::int64_t m = argc > 2 ? std::stoll(argv[2]) : 1024;
+    std::int64_t n = argc > 3 ? std::stoll(argv[3]) : 1024;
+    std::cout << bench_transpose(m, n) << "\n";
     return 0;
   }
   std::cerr << "unknown kernel" << std::endl;

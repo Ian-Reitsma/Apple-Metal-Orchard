@@ -9,6 +9,7 @@ The `docs` directory collects narrative material that spans the entire project. 
 
 ## Current Status
 - `project_status.md` and `tensor.md` are current as of August 2025 and chart both the experimental bridge and the Metal-native tensor implementation.
+- Recent updates describe elementwise division, constant tensor filling, explicit detachment, and the Metal mean kernel.
 - Design specifications under `metal-tensor/docs/` provide deeper notes on kernels, runtime contexts, and autograd scaffolding.
 - Documentation is actively maintained yet lacks full API references and architecture diagrams.
 
@@ -23,7 +24,7 @@ The `docs` directory collects narrative material that spans the entire project. 
 3. Cross-link design notes and tutorials so related topics remain easy to navigate.
 
 ## Benchmarks
-Scripts in `../benchmarks` record hardware information, runtime flags beginning with `ORCHARD_`, and kernel timings. Invoke `python benchmarks/run.py -o /tmp/bench` after building to generate a JSON file under `/tmp/bench/<commit>/benchmarks.json`. Results are untracked, and the `Benchmarks` workflow can be triggered manually to archive the JSON. See `../AGENTS.md` for the repository benchmark protocol.
+Scripts in `../benchmarks` record hardware information, runtime flags beginning with `ORCHARD_`, and kernel timings. Invoke `python benchmarks/run.py -o /tmp/bench` after building to generate a JSON file under `/tmp/bench/<commit>/benchmarks.json`. Results are untracked, and the `Benchmarks` workflow can be triggered manually to archive the JSON. Each JSON entry logs add, mul, matmul, reduce_sum, mean, and transpose timings alongside system metadata. See `../AGENTS.md` for the repository benchmark protocol.
 
 ## Guidelines
 - Expand these documents whenever significant features land or roadmap items change.

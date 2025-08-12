@@ -52,19 +52,21 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 4. Formulate a pull request summarizing the intent, the files modified, and the test outcomes.
 
 ## Current Status
-- Tensor v0 supplies intrusive storage, host and device transfer paths, basic autograd, and initial Metal kernels.
+- Tensor v0 now layers elementwise division, constant filling, and explicit detachment on top of intrusive storage and host and device transfer paths.
+- A dedicated Metal kernel drives `Tensor::mean`, removing the final CPU post-processing step and aligning performance across devices.
+- Benchmarks cover add, mul, matmul, reduce_sum, mean, and transpose and log results beneath commit-specific directories for reproducible performance tracking.
 - The legacy PyTorch bridge persists under `experimental/` but is excluded from default builds.
 - Continuous integration now covers `macos-13` (M1) and `macos-14` (M2) with Xcode 15.3 pinned and Homebrew updates disabled. A Linux job installs a clang-based Objective-C++ toolchain and is allowed to fail for diagnostics.
 - Documentation outlines tensor internals, profiling hooks, and contributor expectations yet remains a living reference.
 
 ## Milestones
 1. Phase out the PyTorch bridge once Tensor v0 covers FlashAttention and essential autograd features.
-2. Ship a fully Metal-native backward pass with fused FlashAttention kernels.
+2. Ship a fully Metal-native backward pass with fused FlashAttention kernels and dropout support.
 3. Deliver a public benchmarking suite with reproducible configurations and published baselines.
 4. Cut a 0.1 release that freezes the API and tags the first feature-complete snapshot.
 
 ## Next Steps
-1. Expand differentiable operations beyond elementwise add to include matmul, reductions, and view transformations.
+1. Extend differentiable operations to include additional elementwise and reduction primitives beyond add, mul, div, and mean.
 2. Replace remaining CPU fallbacks with tuned Metal kernels and delete redundant host code.
 3. Grow the test matrix to cover multi-device transfers, profiling scenarios, and stress conditions.
-4. Stand up a benchmarking harness that records hardware, runtime flags, and kernel timing for every commit.
+4. Stand up a benchmarking harness that records hardware, runtime flags, and kernel timing for every commit while archiving JSON outputs per commit.

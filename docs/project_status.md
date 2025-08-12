@@ -6,7 +6,7 @@ This document captures the current state of the Orchard effort and the path forw
 - Forward pass is integrated via a PyTorch C++ extension and monkey-patch. The custom Metal kernel runs for all GPT-2 attention layers when the environment variable `USE_FLASH_ATTN` is set to 2.
 - Supports multi-head attention, batching, causal masking, and both BF16 and FP32 data types.
 - Performance matches the baseline within a tolerance of 1e-4 and delivers noticeable speedups only at long sequences between four and sixteen thousand tokens. At shorter contexts such as five hundred and twelve tokens the throughput resembles the stock MPS implementation.
-- Backward pass uses a Metal stub that applies the dropout mask and scale but does not yet compute full gradients for keys and values.
+- Backward pass now employs a fused Metal kernel that applies the dropout mask, rescales gradients, and computes outputs for query, key, and value tensors.
 - Known limitations: the head dimension must be a multiple of eight and dropout probabilities must lie within `[0,1)`.
 
 ## Tensor v0 Path
@@ -14,14 +14,14 @@ This document captures the current state of the Orchard effort and the path forw
   - intrusive ref-counted storage with zero-copy Tensor::fromData for wrapping external memory
   - CPU and Metal transfers through Tensor::to with runtime helpers for blit operations
   - allocation profiling and dump_live_tensors for debug tracing
-  - tests for contiguity, CPU adds, command-queue pooling, reductions, and profiling logs
-  - seeded autograd and validated gradients for elementwise add, matmul, reductions, and view transforms across CPU and Metal
+  - tests for contiguity, CPU adds, command-queue pooling, reductions, elementwise division, filling, detachment, and profiling logs
+  - seeded autograd and validated gradients for elementwise add, divide, matmul, mean, reductions, and view transforms across CPU and Metal
 - macOS continuous integration caches builds, treats warnings as errors, and runs the test suite on every pull request.
 - Implementation requires macOS with Xcode 15+ and the Metal 4 SDK. The project does not build in this Linux environment, but agents must still attempt configuration and report failures.
 
 ## Next Steps
-1. Fuse the backward FlashAttention kernels and add dropout support.
-2. Extend the Tensor v0 operator set and expand autograd coverage.
+1. Harden the fused FlashAttention backward kernels and benchmark training loops that depend on dropout.
+2. Extend the Tensor v0 operator set and expand autograd coverage beyond division, mean, and transpose.
 3. Replace remaining CPU fallbacks with optimised Metal kernels.
 4. Keep macOS CI green and broaden the matrix as needed.
 5. Benchmark FlashAttention and core tensor ops and publish performance data.
@@ -29,7 +29,7 @@ This document captures the current state of the Orchard effort and the path forw
 ## Milestones
 1. FlashAttention backward kernels with dropout support unlocking end-to-end training benchmarks.
 2. Tensor v0 reaching feature parity with the PyTorch bridge and enabling its removal.
-3. Complete replacement of CPU fallbacks with Metal kernels and expanded autograd for training loops.
+3. Complete replacement of CPU fallbacks with Metal kernels and expanded autograd for training loops including division and detachment semantics.
 4. Public 0.1 release accompanied by documentation, benchmarks, and CI coverage across supported macOS versions.
 
 ## Getting Involved

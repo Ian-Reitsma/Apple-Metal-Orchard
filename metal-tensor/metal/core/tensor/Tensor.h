@@ -37,9 +37,11 @@ public:
   [[nodiscard]] Tensor contiguous() const;
   [[nodiscard]] Tensor add(const Tensor &other) const;
   [[nodiscard]] Tensor mul(const Tensor &other) const;
+  [[nodiscard]] Tensor div(const Tensor &other) const;
   [[nodiscard]] Tensor matmul(const Tensor &other) const;
   [[nodiscard]] Tensor sum() const;
   [[nodiscard]] Tensor mean() const;
+  void fill(float value);
   void *data_ptr() const {
     if (!impl_ || !impl_->storage)
       return nullptr;
@@ -48,6 +50,7 @@ public:
   }
   std::int64_t offset() const { return impl_->offset; }
   [[nodiscard]] Tensor clone() const;
+  [[nodiscard]] Tensor detach() const;
 
   DType dtype() const { return impl_->dtype; }
   Device device() const { return impl_->device; }

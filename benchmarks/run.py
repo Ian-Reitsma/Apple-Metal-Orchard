@@ -46,6 +46,8 @@ def main() -> None:
         ("mul", ["1000000"]),
         ("matmul", ["64", "64", "64"]),
         ("reduce_sum", ["1000000"]),
+        ("mean", ["1000000"]),
+        ("transpose", ["1024", "1024"]),
     ]
 
     results = [run_kernel(bench_bin, k, args) for k, args in kernels]

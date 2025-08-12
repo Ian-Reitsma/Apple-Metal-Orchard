@@ -5,6 +5,4 @@ PyTorch path. This directory is ignored by Git to keep large binaries out of the
 repository and to avoid polluting commits with transient data.
 
 ## Next Steps
-Provide download scripts or links here if specific datasets become required for
-reproducible experiments, or remove the directory when the experimental path is
-retired.
+Provide download scripts or links here if specific datasets become required for reproducible experiments. Document dataset versions, preprocessing steps, and intended use in a README within each subdirectory. Remove the directory when the experimental path is retired.

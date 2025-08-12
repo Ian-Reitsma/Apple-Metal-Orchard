@@ -6,14 +6,15 @@
 - Tensor::empty, Tensor::view, Tensor::slice, and zero-copy Tensor::fromData
 - CPU and Metal transfers via Tensor::to
 - allocation profiling and dump_live_tensors for debug tracing
-- a starter autograd engine with Tensor::requires_grad, gradient tensors, and Node and Edge graph powering backward for matmul, reductions, elementwise multiply, transpose, and view
-- Metal compute kernels covering vector add, matmul, and whole-tensor reductions, automatically selected when tensors live on an mps device
+- a starter autograd engine with Tensor::requires_grad, gradient tensors, and Node and Edge graph powering backward for matmul, reductions, elementwise add and multiply, division, transpose, and view
+- Metal compute kernels covering vector add, matmul, whole-tensor reductions, and a dedicated mean kernel, automatically selected when tensors live on an mps device
+- constant filling through Tensor::fill and storage detachment with Tensor::detach
 
 ## Current Status
 - CPU and Metal backends allocate tensors with intrusive storage and share views without copying.
 - Host and device transfers through Tensor::to round-trip data between CPU and mps devices.
-- Tests validate contiguity, profiling logs, command-queue pooling, multi-device transfers, alignment on non-contiguous views, and gradient propagation for elementwise add, multiply, matmul, reductions, transpose, and view transforms.
-- Vector add and multiply, matmul, and full reductions ship with Metal kernels for forward and backward paths, and transpose uses a Metal kernel for backward.
+- Tests validate contiguity, profiling logs, command-queue pooling, multi-device transfers, alignment on non-contiguous views, constant filling, detachment semantics, and gradient propagation for elementwise add, multiply, divide, matmul, mean, reductions, transpose, and view transforms.
+- Vector add and multiply, division, matmul, mean, and full reductions ship with Metal kernels for forward and backward paths, and transpose uses a Metal kernel for backward.
 
 ## Directory map
 - `metal/` holds the implementation source
