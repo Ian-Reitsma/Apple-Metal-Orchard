@@ -31,6 +31,7 @@ public:
   fromData(void *data, const std::array<std::int64_t, 8> &shape, DType dtype,
            Device dev, std::function<void(void *)> deleter = nullptr);
   [[nodiscard]] Tensor view(const std::array<std::int64_t, 8> &newShape) const;
+  [[nodiscard]] Tensor transpose(int dim0, int dim1) const;
   [[nodiscard]] Tensor slice(int dim, int start, int end, int step = 1) const;
   [[nodiscard]] Tensor to(Device dev) const;
   [[nodiscard]] Tensor contiguous() const;

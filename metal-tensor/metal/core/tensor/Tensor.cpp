@@ -3,10 +3,13 @@
 #include "../../runtime/MetalKernels.h"
 #include "../autograd/MatmulBackward.h"
 #include "../autograd/MeanBackward.h"
+#include "../autograd/MulBackward.h"
 #include "../autograd/Node.h"
 #include "../autograd/SumBackward.h"
+#include "../autograd/TransposeBackward.h"
 #include "../autograd/ViewBackward.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -214,6 +217,35 @@ Tensor Tensor::view(const std::array<std::int64_t, 8> &newShape) const {
   t.set_requires_grad(requires_grad_);
   if (requires_grad_) {
     t.set_grad_fn(std::make_shared<autograd::ViewBackward>(*this));
+  } else {
+    t.set_grad_fn(grad_fn_);
+  }
+  return t;
+}
+
+Tensor Tensor::transpose(int dim0, int dim1) const {
+  if (!impl_ || !impl_->storage)
+    return Tensor{};
+  int r = rank_of(impl_->shape);
+  if (dim0 < 0 || dim1 < 0 || dim0 >= r || dim1 >= r)
+    return Tensor{};
+  auto *impl = new TensorImpl{};
+  os_unfair_lock_lock(&this->impl_->lock);
+  this->impl_->storage->retain();
+  os_unfair_lock_unlock(&this->impl_->lock);
+  impl->storage = this->impl_->storage;
+  impl->dtype = this->impl_->dtype;
+  impl->device = this->impl_->device;
+  impl->shape = this->impl_->shape;
+  impl->strides = this->impl_->strides;
+  std::swap(impl->shape[dim0], impl->shape[dim1]);
+  std::swap(impl->strides[dim0], impl->strides[dim1]);
+  impl->offset = this->impl_->offset;
+  Tensor t(impl);
+  t.set_requires_grad(requires_grad_);
+  if (requires_grad_) {
+    t.set_grad_fn(
+        std::make_shared<autograd::TransposeBackward>(*this, dim0, dim1));
   } else {
     t.set_grad_fn(grad_fn_);
   }
@@ -428,33 +460,8 @@ Tensor Tensor::mul(const Tensor &other) const {
   }
   bool rg = requires_grad_ || other.requires_grad_;
   out.set_requires_grad(rg);
-  if (rg) {
-    struct MulNode : autograd::Node {
-      Tensor a;
-      Tensor b;
-      MulNode(const Tensor &aa, const Tensor &bb) : a(aa), b(bb) {}
-      void apply(Tensor &g) override {
-        Tensor ga = Tensor::empty(a.shape(), DType::f32, Device::cpu);
-        Tensor gb = Tensor::empty(b.shape(), DType::f32, Device::cpu);
-        auto *gp = static_cast<const float *>(g.to(Device::cpu).data_ptr());
-        auto *ap = static_cast<const float *>(a.to(Device::cpu).data_ptr());
-        auto *bp = static_cast<const float *>(b.to(Device::cpu).data_ptr());
-        auto *gap = static_cast<float *>(ga.data_ptr());
-        auto *gbp = static_cast<float *>(gb.data_ptr());
-        for (std::size_t i = 0; i < a.numel(); ++i) {
-          gap[i] = gp[i] * bp[i];
-          gbp[i] = gp[i] * ap[i];
-        }
-        accumulate(a, ga.to(a.device()));
-        accumulate(b, gb.to(b.device()));
-        if (a.grad_fn())
-          a.grad_fn()->apply(a.grad());
-        if (b.grad_fn())
-          b.grad_fn()->apply(b.grad());
-      }
-    };
-    out.set_grad_fn(std::make_shared<MulNode>(*this, other));
-  }
+  if (rg)
+    out.set_grad_fn(std::make_shared<autograd::MulBackward>(*this, other));
   return out;
 }
 

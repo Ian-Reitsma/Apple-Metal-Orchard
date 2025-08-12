@@ -150,6 +150,30 @@ TEST(TensorAutogradTest, MulBackward) {
   }
 }
 
+TEST(TensorAutogradTest, TransposeBackward) {
+  std::array<std::int64_t, 8> aShape{2, 3, 1, 1, 1, 1, 1, 1};
+  std::array<std::int64_t, 8> cShape{3, 2, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(aShape, DType::f32, Device::cpu);
+  Tensor c = Tensor::empty(cShape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *cp = static_cast<float *>(c.data_ptr());
+  for (int i = 0; i < 6; ++i) {
+    ap[i] = static_cast<float>(i + 1);
+    cp[i] = static_cast<float>(i + 1);
+  }
+  a.set_requires_grad(true);
+  Tensor t = a.transpose(0, 1);
+  Tensor prod = t.mul(c);
+  Tensor s = prod.sum();
+  s.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      EXPECT_FLOAT_EQ(ag[i * 3 + j], cp[j * 2 + i]);
+    }
+  }
+}
+
 TEST(TensorAutogradTest, MatmulBackward) {
   std::array<std::int64_t, 8> aShape{2, 3, 1, 1, 1, 1, 1, 1};
   std::array<std::int64_t, 8> bShape{3, 2, 1, 1, 1, 1, 1, 1};
@@ -300,6 +324,21 @@ TEST(TensorTest, MatmulMetalMatchesCpu) {
     EXPECT_FLOAT_EQ(cp[i], mp[i]);
 }
 
+TEST(TensorTest, TransposeMetalMatchesCpu) {
+  std::array<std::int64_t, 8> aShape{2, 3, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(aShape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  for (int i = 0; i < 6; ++i)
+    ap[i] = static_cast<float>(i + 1);
+  Tensor cpu = a.transpose(0, 1).contiguous();
+  Tensor ma = a.to(Device::mps);
+  Tensor mc = ma.transpose(0, 1).contiguous().to(Device::cpu);
+  auto *cp = static_cast<float *>(cpu.data_ptr());
+  auto *mp = static_cast<float *>(mc.data_ptr());
+  for (int i = 0; i < 6; ++i)
+    EXPECT_FLOAT_EQ(cp[i], mp[i]);
+}
+
 TEST(TensorTest, SumMetalMatchesCpu) {
   std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
   Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
@@ -338,6 +377,45 @@ TEST(TensorTest, AutogradAddMetal) {
     EXPECT_FLOAT_EQ(agp[i], 1.0f);
     EXPECT_FLOAT_EQ(bgp[i], 1.0f);
   }
+}
+
+TEST(TensorTest, AutogradMulMetal) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor ac = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor bc = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(ac.data_ptr());
+  auto *bp = static_cast<float *>(bc.data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    ap[i] = static_cast<float>(i + 1);
+    bp[i] = static_cast<float>(i + 2);
+  }
+  ac.set_requires_grad(true);
+  bc.set_requires_grad(true);
+  Tensor cc = ac.mul(bc);
+  cc.backward();
+  Tensor ag_exp = ac.grad();
+  Tensor bg_exp = bc.grad();
+
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
+  std::memcpy(a.data_ptr(), ac.data_ptr(), 3 * sizeof(float));
+  std::memcpy(b.data_ptr(), bc.data_ptr(), 3 * sizeof(float));
+  a.set_requires_grad(true);
+  b.set_requires_grad(true);
+  Tensor ma = a.to(Device::mps);
+  Tensor mb = b.to(Device::mps);
+  Tensor c = ma.mul(mb);
+  c.backward();
+  Tensor ag = ma.grad().to(Device::cpu);
+  Tensor bg = mb.grad().to(Device::cpu);
+  auto *agp = static_cast<float *>(ag.data_ptr());
+  auto *bgp = static_cast<float *>(bg.data_ptr());
+  auto *ag_exp_p = static_cast<float *>(ag_exp.data_ptr());
+  auto *bg_exp_p = static_cast<float *>(bg_exp.data_ptr());
+  for (int i = 0; i < 3; ++i)
+    EXPECT_FLOAT_EQ(agp[i], ag_exp_p[i]);
+  for (int i = 0; i < 3; ++i)
+    EXPECT_FLOAT_EQ(bgp[i], bg_exp_p[i]);
 }
 
 TEST(TensorTest, AutogradMatmulMetal) {
@@ -453,6 +531,42 @@ TEST(TensorTest, AutogradViewMetal) {
   auto *exp_p = static_cast<float *>(g_exp.data_ptr());
   for (int i = 0; i < 4; ++i)
     EXPECT_FLOAT_EQ(gp[i], exp_p[i]);
+}
+
+TEST(TensorTest, AutogradTransposeMetal) {
+  std::array<std::int64_t, 8> aShape{2, 3, 1, 1, 1, 1, 1, 1};
+  std::array<std::int64_t, 8> cShape{3, 2, 1, 1, 1, 1, 1, 1};
+  Tensor ac = Tensor::empty(aShape, DType::f32, Device::cpu);
+  Tensor cc = Tensor::empty(cShape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(ac.data_ptr());
+  auto *cp = static_cast<float *>(cc.data_ptr());
+  for (int i = 0; i < 6; ++i) {
+    ap[i] = static_cast<float>(i + 1);
+    cp[i] = static_cast<float>(i + 1);
+  }
+  ac.set_requires_grad(true);
+  Tensor tc = ac.transpose(0, 1);
+  Tensor pc = tc.mul(cc);
+  Tensor sc = pc.sum();
+  sc.backward();
+  Tensor ag_exp = ac.grad();
+
+  Tensor a = Tensor::empty(aShape, DType::f32, Device::cpu);
+  Tensor c = Tensor::empty(cShape, DType::f32, Device::cpu);
+  std::memcpy(a.data_ptr(), ac.data_ptr(), 6 * sizeof(float));
+  std::memcpy(c.data_ptr(), cc.data_ptr(), 6 * sizeof(float));
+  a.set_requires_grad(true);
+  Tensor ma = a.to(Device::mps);
+  Tensor mc = c.to(Device::mps);
+  Tensor t = ma.transpose(0, 1);
+  Tensor p = t.mul(mc);
+  Tensor s = p.sum();
+  s.backward();
+  Tensor ag = ma.grad().to(Device::cpu);
+  auto *agp = static_cast<float *>(ag.data_ptr());
+  auto *ag_exp_p = static_cast<float *>(ag_exp.data_ptr());
+  for (int i = 0; i < 6; ++i)
+    EXPECT_FLOAT_EQ(agp[i], ag_exp_p[i]);
 }
 #endif
 
