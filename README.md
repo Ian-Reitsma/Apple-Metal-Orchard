@@ -23,7 +23,7 @@
 
 ## Building
 1. Install Xcode 15+, the Metal 4 SDK, and the command line tools.
-2. From the repository root run cmake -S . -B build -G Ninja to produce build files in the `build/` directory. The Ninja generator matches the GitHub Actions workflow.
+2. From the repository root run cmake -S . -B build -G Ninja to produce build files in the `build/` directory. The test suite downloads GoogleTest during configuration unless -DFETCHCONTENT_FULLY_DISCONNECTED=ON is provided and `third_party/googletest` or a system package is available. The Ninja generator matches the GitHub Actions workflow.
 3. Invoke cmake --build build to compile the static libraries and unit tests. Pass -DORCHARD_BUILD_EXPERIMENTAL=ON during configuration to compile the legacy PyTorch bridge.
 4. Linux hosts lack the required toolchain; running the above commands still provides diagnostic output that must be included in pull requests.
 
