@@ -37,10 +37,14 @@ public:
   [[nodiscard]] Tensor contiguous() const;
   [[nodiscard]] Tensor add(const Tensor &other) const;
   [[nodiscard]] Tensor mul(const Tensor &other) const;
-  [[nodiscard]] Tensor div(const Tensor &other) const;
+  [[nodiscard]] Tensor div(const Tensor &other, bool safe = false) const;
+  [[nodiscard]] Tensor div(float scalar, bool safe = false) const;
+  Tensor &div_(float scalar, bool safe = false);
   [[nodiscard]] Tensor matmul(const Tensor &other) const;
   [[nodiscard]] Tensor sum() const;
   [[nodiscard]] Tensor mean() const;
+  [[nodiscard]] Tensor sum(int dim, bool keepdim = false) const;
+  [[nodiscard]] Tensor mean(int dim, bool keepdim = false) const;
   void fill(float value);
   void *data_ptr() const {
     if (!impl_ || !impl_->storage)

@@ -6,3 +6,11 @@ Results are not checked into source control. Each run should note the commit has
 
 ## Next Steps
 Update or remove these scripts once equivalent benchmarking exists for the Metal-native stack and the experimental path is retired.
+
+## Contributor Protocol
+- See `../../AGENTS.md` for repository governance and mandatory build and test steps.
+- Run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root and attach output to pull requests.
+- Use `rg` instead of `ls -R` or `grep -R` when searching the repository.
+- Do not commit generated benchmark results or any large artifacts.
+- Keep commits single-purpose with an imperative summary line, and reference modified files by path and line number in the pull request.
+- Work only on the default branch and maintain a clean worktree.

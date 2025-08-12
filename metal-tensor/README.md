@@ -42,3 +42,12 @@ Invoke the tests with cmake --build build --target test. The suite covers contig
 - Broaden autograd coverage and add more differentiable operators.
 - Implement Metal kernels for remaining CPU paths and retire redundant code.
 - Grow the test suite to cover additional device transfers and upcoming ops.
+
+## Contributor Protocol
+- Study `../AGENTS.md` before changing any source, test, or documentation file; it governs every operation in this repository.
+- Run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root prior to committing, and capture any failure output.
+- Use `rg` to search for symbols; avoid recursive `ls` or `grep` invocations.
+- Format C++20 and Objective-C++ code with `clang-format` and keep lines concise.
+- Never commit generated files, build artifacts, or assets larger than five megabytes.
+- Limit each pull request to a single commit with an imperative summary line and cite modified files by path and line number.
+- Operate solely on the default branch and leave the worktree clean after your commit.

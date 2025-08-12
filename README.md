@@ -17,6 +17,9 @@
 - Autograd foundations supplied by the `requires_grad` flag, gradient accumulation in `Tensor::grad`, and dedicated nodes for matmul, reductions, view, elementwise add and multiply, transpose, and division. `Tensor::detach` returns a view that shares storage but halts gradient propagation.
 - Initial Metal compute kernels, located under `metal-tensor/metal/kernels/`, implementing vector addition, matmul, whole-tensor reductions, and a dedicated mean kernel; each operation automatically falls back to CPU code when Metal execution is unavailable.
 - Constant filling through `Tensor::fill` sets every element to a value on both CPU and Metal devices.
+- `Tensor::div` checks denominators for zero and can mask them when a safe flag
+  is provided; see [docs/tensor.md](docs/tensor.md#elementwise-division) for
+  details.
 
 ## Building
 1. Install Xcode 15+, the Metal 4 SDK, and the command line tools.
@@ -58,5 +61,13 @@ Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation ev
 3. Grow the test matrix for multi-device transfers, profiling scenarios, and stress tests.
 4. Iterate on FlashAttention kernels to close remaining gaps with the PyTorch baseline.
 
-## Contributing
-All contributors must read and comply with AGENTS.md. It details repository expectations, commit formatting, the requirement to use `rg` for searches, and the mandatory build and test steps that precede every pull request.
+## Contributor Protocol
+- Read `AGENTS.md` in this directory before touching any file; it is the definitive governance document.
+- Configure the project with `cmake -S . -B build -G Ninja` from the repository root and capture all configure output.
+- Run `cmake --build build --target test` and include any failure logs in pull requests, even on systems lacking the Metal toolchain.
+- Search the tree with `rg` instead of recursive `ls` or `grep` commands.
+- Format C++20 and Objective-C++ sources using `clang-format`.
+- Avoid committing generated files or artifacts exceeding five megabytes; build outputs belong under untracked directories such as `build`.
+- Use a single commit per task with an imperative one-line summary.
+- Reference modified files by relative path and line number in the pull request message so reviewers can inspect changes quickly.
+- Work only on the default branch and leave the worktree clean when the commit is complete.

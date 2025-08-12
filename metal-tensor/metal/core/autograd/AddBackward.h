@@ -5,11 +5,10 @@
 
 namespace orchard::core::autograd {
 
-struct DivBackward : Node {
+struct AddBackward : Node {
   tensor::Tensor a;
   tensor::Tensor b;
-  bool safe{false};
-  DivBackward(const tensor::Tensor &aa, const tensor::Tensor &bb, bool s);
+  AddBackward(const tensor::Tensor &aa, const tensor::Tensor &bb);
   void apply(tensor::Tensor &g) override;
 };
 
