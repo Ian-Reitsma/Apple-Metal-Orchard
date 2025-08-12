@@ -26,7 +26,7 @@ if(APPLE)
   )
 else()
   target_sources(orchard_metal PRIVATE
-    metal/runtime/runtime.cpp
+    metal/runtime/runtime_cpu.cpp
     metal/runtime/CpuKernels.cpp
   )
 endif()

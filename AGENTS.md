@@ -12,6 +12,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - `experimental/` – preserves the legacy PyTorch-based path. Subdirectories include `orchard_ops/` for C++ and Python extension modules, `benchmarks/` for performance scripts, `tests/` for PyTorch-driven verification, `kernel_lib/` for prebuilt FlashAttention binaries, and transient holders like `data/` and `runs/` which remain ignored by Git.
 - `docs/` – houses project-wide narrative material.
 - `.github/` – contains the continuous integration workflow `workflows/macos.yml` which configures the macOS builder.
+- `third_party/` – vendors external code. A trimmed `googletest` tree supplies headers and sources only; upstream tests, samples, and documentation were dropped to keep the repository small.
 
 ## Component Highlights
 - `Storage` implements intrusive reference counting to track underlying `MTLBuffer` allocations. The static factory `Tensor::fromData` wraps external memory without copying by accepting a raw pointer, explicit shape, data type, device, and optional deleter callback.
@@ -68,6 +69,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - The legacy PyTorch bridge persists under `experimental/` but is excluded from default builds.
 - Continuous integration now covers `macos-13` (M1) and `macos-14` (M2) with Xcode 15.3 pinned and Homebrew updates disabled. A Linux job installs a clang-based Objective-C++ toolchain and is allowed to fail for diagnostics.
 - Documentation outlines tensor internals, profiling hooks, and contributor expectations yet remains a living reference.
+- GoogleTest ships as a minimal vendored copy under `third_party/googletest` so tests compile without network access; obtain upstream tests and samples from the official repository when needed.
 
 ## Milestones
 1. Phase out the PyTorch bridge once Tensor v0 covers FlashAttention and essential autograd features.
@@ -77,8 +79,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 
 ## Next Steps
 1. Fix CMake configuration on non-Apple platforms so CPU-only builds succeed without Objective-C++.
-2. Vendor or locate GoogleTest locally to remove network dependencies from the test build.
-3. Extend differentiable operations to include additional elementwise and reduction primitives beyond add, mul, div, and mean.
-4. Replace remaining CPU fallbacks with tuned Metal kernels and delete redundant host code.
-5. Grow the test matrix to cover multi-device transfers, profiling scenarios, and stress conditions.
-6. Stand up a benchmarking harness that records hardware, runtime flags, and kernel timing for every commit while archiving JSON outputs per commit.
+2. Extend differentiable operations to include additional elementwise and reduction primitives beyond add, mul, div, and mean.
+3. Replace remaining CPU fallbacks with tuned Metal kernels and delete redundant host code.
+4. Grow the test matrix to cover multi-device transfers, profiling scenarios, and stress conditions.
+5. Stand up a benchmarking harness that records hardware, runtime flags, and kernel timing for every commit while archiving JSON outputs per commit.

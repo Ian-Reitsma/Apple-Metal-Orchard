@@ -23,7 +23,7 @@
 
 ## Building
 1. Install Xcode 15+, the Metal 4 SDK, and the command line tools.
-2. From the repository root run cmake -S . -B build -G Ninja to produce build files in the `build/` directory. The Ninja generator matches the GitHub Actions workflow.
+2. From the repository root run cmake -S . -B build -G Ninja to produce build files in the `build/` directory. A trimmed copy of GoogleTest lives under `third_party/googletest` so configuration requires no network access. Pass -DFETCHCONTENT_FULLY_DISCONNECTED=ON to ensure CMake remains offline. The Ninja generator matches the GitHub Actions workflow.
 3. Invoke cmake --build build to compile the static libraries and unit tests. Pass -DORCHARD_BUILD_EXPERIMENTAL=ON during configuration to compile the legacy PyTorch bridge.
 4. Linux hosts lack the required toolchain; running the above commands still provides diagnostic output that must be included in pull requests.
 
@@ -48,6 +48,7 @@ Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation ev
 - macOS continuous integration enforces warnings-as-errors and executes the test suite; Linux hosts provide diagnostic failures only.
 - Fused FlashAttention backward kernels with dropout are present under `experimental/` and enable end-to-end gradient checks for keys and values.
 - Documentation covers design specifications, tensor features, and project status but evolves with each milestone.
+- A minimal copy of GoogleTest under `third_party/googletest` builds the test suite without fetching from the network; upstream tests and samples are not included.
 
 ## Milestones
 1. Fused FlashAttention backward kernels with dropout support.
