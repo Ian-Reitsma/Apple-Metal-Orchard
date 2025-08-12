@@ -16,6 +16,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <mutex>
 #include <sstream>
 #include <stdexcept>
 
@@ -105,7 +106,7 @@ void cpu_broadcast_binary(const float *a, std::int64_t a_off,
                           const std::array<std::int64_t, 8> &bstrides,
                           float *out, const std::array<std::int64_t, 8> &shape,
                           F fn) {
-  std::size_t n = numel(shape);
+  std::size_t n = core::tensor::numel(shape);
   std::array<std::int64_t, 8> idx{};
   std::int64_t ao = a_off;
   std::int64_t bo = b_off;
@@ -130,13 +131,13 @@ Tensor::Tensor(const Tensor &other) {
   if (other.impl_) {
     impl_ = new TensorImpl(*other.impl_);
     if (impl_->storage) {
-      os_unfair_lock_lock(&other.impl_->lock);
+      std::lock_guard guard(other.impl_->lock);
       impl_->storage->retain();
-      os_unfair_lock_unlock(&other.impl_->lock);
     }
   }
   requires_grad_ = other.requires_grad_;
-  grad_ = other.grad_;
+  if (other.grad_)
+    grad_ = std::make_unique<Tensor>(*other.grad_);
   grad_fn_ = other.grad_fn_;
 }
 
@@ -145,9 +146,8 @@ Tensor &Tensor::operator=(const Tensor &other) {
     return *this;
   if (impl_) {
     if (impl_->storage) {
-      os_unfair_lock_lock(&impl_->lock);
+      std::lock_guard guard(impl_->lock);
       impl_->storage->release();
-      os_unfair_lock_unlock(&impl_->lock);
     }
     delete impl_;
   }
@@ -155,13 +155,15 @@ Tensor &Tensor::operator=(const Tensor &other) {
   if (other.impl_) {
     impl_ = new TensorImpl(*other.impl_);
     if (impl_->storage) {
-      os_unfair_lock_lock(&other.impl_->lock);
+      std::lock_guard guard(other.impl_->lock);
       impl_->storage->retain();
-      os_unfair_lock_unlock(&other.impl_->lock);
     }
   }
   requires_grad_ = other.requires_grad_;
-  grad_ = other.grad_;
+  if (other.grad_)
+    grad_ = std::make_unique<Tensor>(*other.grad_);
+  else
+    grad_.reset();
   grad_fn_ = other.grad_fn_;
   return *this;
 }
@@ -171,16 +173,15 @@ Tensor::Tensor(Tensor &&other) noexcept
       grad_(std::move(other.grad_)), grad_fn_(std::move(other.grad_fn_)) {
   other.impl_ = nullptr;
   other.requires_grad_ = false;
-  other.grad_ = Tensor{};
+  other.grad_.reset();
   other.grad_fn_.reset();
 }
 
 Tensor &Tensor::operator=(Tensor &&other) noexcept {
   if (this != &other) {
     if (impl_ && impl_->storage) {
-      os_unfair_lock_lock(&impl_->lock);
+      std::lock_guard guard(impl_->lock);
       impl_->storage->release();
-      os_unfair_lock_unlock(&impl_->lock);
       delete impl_;
     }
     impl_ = other.impl_;
@@ -189,7 +190,7 @@ Tensor &Tensor::operator=(Tensor &&other) noexcept {
     grad_fn_ = std::move(other.grad_fn_);
     other.impl_ = nullptr;
     other.requires_grad_ = false;
-    other.grad_ = Tensor{};
+    other.grad_.reset();
     other.grad_fn_.reset();
   }
   return *this;
@@ -198,9 +199,8 @@ Tensor &Tensor::operator=(Tensor &&other) noexcept {
 Tensor::~Tensor() {
   if (impl_) {
     if (impl_->storage) {
-      os_unfair_lock_lock(&impl_->lock);
+      std::lock_guard guard(impl_->lock);
       impl_->storage->release();
-      os_unfair_lock_unlock(&impl_->lock);
     }
     delete impl_;
   }
@@ -211,7 +211,7 @@ Tensor Tensor::empty(const std::array<std::int64_t, 8> &shape, DType dtype,
   int r = rank_of(shape);
   if (r > 8)
     return Tensor{};
-  std::int64_t n = numel(shape);
+  std::int64_t n = core::tensor::numel(shape);
   std::size_t bytes = n * dtype_size(dtype);
   Storage *storage = Storage::create(bytes, dev);
   if (!storage)
@@ -242,7 +242,7 @@ Tensor Tensor::fromData(void *data, const std::array<std::int64_t, 8> &shape,
     return Tensor{};
   if (!aligned64(data))
     return Tensor{};
-  std::size_t bytes = numel(shape) * dtype_size(dtype);
+  std::size_t bytes = core::tensor::numel(shape) * dtype_size(dtype);
   Storage *storage = Storage::wrap(data, bytes, dev, std::move(deleter));
   if (!storage)
     return Tensor{};
@@ -264,12 +264,13 @@ Tensor Tensor::view(const std::array<std::int64_t, 8> &newShape) const {
     if (newShape[i] <= 0)
       return Tensor{};
   }
-  if (numel(newShape) != numel(impl_->shape))
+  if (core::tensor::numel(newShape) != core::tensor::numel(impl_->shape))
     return Tensor{};
   auto *impl = new TensorImpl{};
-  os_unfair_lock_lock(&this->impl_->lock);
-  this->impl_->storage->retain();
-  os_unfair_lock_unlock(&this->impl_->lock);
+  {
+    std::lock_guard guard(this->impl_->lock);
+    this->impl_->storage->retain();
+  }
   impl->storage = this->impl_->storage;
   impl->dtype = this->impl_->dtype;
   impl->device = this->impl_->device;
@@ -293,9 +294,10 @@ Tensor Tensor::transpose(int dim0, int dim1) const {
   if (dim0 < 0 || dim1 < 0 || dim0 >= r || dim1 >= r)
     return Tensor{};
   auto *impl = new TensorImpl{};
-  os_unfair_lock_lock(&this->impl_->lock);
-  this->impl_->storage->retain();
-  os_unfair_lock_unlock(&this->impl_->lock);
+  {
+    std::lock_guard guard(this->impl_->lock);
+    this->impl_->storage->retain();
+  }
   impl->storage = this->impl_->storage;
   impl->dtype = this->impl_->dtype;
   impl->device = this->impl_->device;
@@ -331,9 +333,10 @@ Tensor Tensor::slice(int dim, int start, int end, int step) const {
   newStrides[dim] *= step;
 
   auto *impl = new TensorImpl{};
-  os_unfair_lock_lock(&this->impl_->lock);
-  this->impl_->storage->retain();
-  os_unfair_lock_unlock(&this->impl_->lock);
+  {
+    std::lock_guard guard(this->impl_->lock);
+    this->impl_->storage->retain();
+  }
   impl->storage = this->impl_->storage;
   impl->dtype = this->impl_->dtype;
   impl->device = this->impl_->device;
@@ -351,9 +354,10 @@ Tensor Tensor::to(Device dev) const {
     return Tensor{};
   if (dev == impl_->device) {
     auto *impl = new TensorImpl{};
-    os_unfair_lock_lock(&this->impl_->lock);
-    this->impl_->storage->retain();
-    os_unfair_lock_unlock(&this->impl_->lock);
+    {
+      std::lock_guard guard(this->impl_->lock);
+      this->impl_->storage->retain();
+    }
     impl->storage = this->impl_->storage;
     impl->dtype = this->impl_->dtype;
     impl->device = this->impl_->device;
@@ -408,9 +412,10 @@ Tensor Tensor::contiguous() const {
     return Tensor{};
   if (is_contiguous()) {
     auto *impl = new TensorImpl{};
-    os_unfair_lock_lock(&this->impl_->lock);
-    this->impl_->storage->retain();
-    os_unfair_lock_unlock(&this->impl_->lock);
+    {
+      std::lock_guard guard(this->impl_->lock);
+      this->impl_->storage->retain();
+    }
     impl->storage = this->impl_->storage;
     impl->dtype = this->impl_->dtype;
     impl->device = this->impl_->device;
@@ -479,7 +484,7 @@ Tensor Tensor::add(const Tensor &other) const {
                          other.impl_->strides, info))
     return Tensor{};
   Tensor out = empty(info.shape, impl_->dtype, impl_->device);
-  std::size_t n = numel(info.shape);
+  std::size_t n = core::tensor::numel(info.shape);
   if (impl_->device == Device::cpu) {
     cpu_broadcast_binary(static_cast<const float *>(impl_->storage->data),
                          impl_->offset, info.a_strides,
@@ -509,7 +514,7 @@ Tensor Tensor::mul(const Tensor &other) const {
                          other.impl_->strides, info))
     return Tensor{};
   Tensor out = empty(info.shape, impl_->dtype, impl_->device);
-  std::size_t n = numel(info.shape);
+  std::size_t n = core::tensor::numel(info.shape);
   if (impl_->device == Device::cpu) {
     cpu_broadcast_binary(static_cast<const float *>(impl_->storage->data),
                          impl_->offset, info.a_strides,
@@ -552,7 +557,7 @@ Tensor Tensor::div(const Tensor &other, bool safe) const {
                          other.impl_->strides, info))
     return Tensor{};
   Tensor out = empty(info.shape, impl_->dtype, impl_->device);
-  std::size_t n = numel(info.shape);
+  std::size_t n = core::tensor::numel(info.shape);
   if (impl_->device == Device::cpu) {
     cpu_broadcast_binary(static_cast<const float *>(impl_->storage->data),
                          impl_->offset, info.a_strides,
@@ -735,7 +740,7 @@ Tensor Tensor::sum(int dim, bool keepdim) const {
     auto *ap = static_cast<const float *>(data_ptr());
     auto *op = static_cast<float *>(out.data_ptr());
     auto strides = impl_->strides;
-    std::size_t n = numel(outShape);
+    std::size_t n = core::tensor::numel(outShape);
     for (std::size_t i = 0; i < n; ++i) {
       std::size_t idx = i;
       std::int64_t base = 0;
@@ -759,7 +764,7 @@ Tensor Tensor::sum(int dim, bool keepdim) const {
         static_cast<float *>(out.impl_->storage->data), outShape.data(),
         impl_->strides.data(), static_cast<std::uint32_t>(axisLen),
         static_cast<std::uint32_t>(dim),
-        static_cast<std::size_t>(numel(outShape)));
+        static_cast<std::size_t>(core::tensor::numel(outShape)));
   }
   out.set_requires_grad(requires_grad_);
   if (requires_grad_)
@@ -788,7 +793,7 @@ Tensor Tensor::mean(int dim, bool keepdim) const {
     auto *ap = static_cast<const float *>(data_ptr());
     auto *op = static_cast<float *>(out.data_ptr());
     auto strides = impl_->strides;
-    std::size_t n = numel(outShape);
+    std::size_t n = core::tensor::numel(outShape);
     for (std::size_t i = 0; i < n; ++i) {
       std::size_t idx = i;
       std::int64_t base = 0;
@@ -807,12 +812,12 @@ Tensor Tensor::mean(int dim, bool keepdim) const {
       op[i] = s / static_cast<float>(axisLen);
     }
   } else if (impl_->device == Device::mps) {
-    runtime::metal_mean_axis(static_cast<const float *>(impl_->storage->data),
-                             static_cast<float *>(out.impl_->storage->data),
-                             outShape.data(), impl_->strides.data(),
-                             static_cast<std::uint32_t>(axisLen),
-                             static_cast<std::uint32_t>(dim),
-                             static_cast<std::size_t>(numel(outShape)));
+    runtime::metal_mean_axis(
+        static_cast<const float *>(impl_->storage->data),
+        static_cast<float *>(out.impl_->storage->data), outShape.data(),
+        impl_->strides.data(), static_cast<std::uint32_t>(axisLen),
+        static_cast<std::uint32_t>(dim),
+        static_cast<std::size_t>(core::tensor::numel(outShape)));
   }
   out.set_requires_grad(requires_grad_);
   if (requires_grad_)
@@ -906,6 +911,10 @@ Tensor Tensor::detach() const {
   out.set_grad_fn(nullptr);
   out.set_grad(Tensor{});
   return out;
+}
+
+bool Tensor::is_alias_of(const Tensor &other) const {
+  return impl_ && other.impl_ && impl_->storage == other.impl_->storage;
 }
 
 std::string Tensor::toString() const {

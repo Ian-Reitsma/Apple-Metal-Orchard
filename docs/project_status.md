@@ -13,9 +13,11 @@ This document captures the current state of the Orchard effort and the path forw
 - `metal-tensor/` provides the initial Tensor v0 implementation:
   - intrusive ref-counted storage with zero-copy Tensor::fromData for wrapping external memory
   - CPU and Metal transfers through Tensor::to with runtime helpers for blit operations
-  - allocation profiling and dump_live_tensors for debug tracing
-  - tests for contiguity, CPU adds, command-queue pooling, reductions, elementwise division, filling, detachment, and profiling logs
-  - seeded autograd and validated gradients for elementwise add, divide, matmul, mean, reductions, and view transforms across CPU and Metal
+    - allocation profiling and dump_live_tensors for debug tracing
+    - tests for contiguity, CPU adds, command-queue pooling, reductions, elementwise division, filling, detachment, and profiling logs
+    - helper Tensor::is_alias_of with tests mutating detached views and clone-before-detach paths to verify storage aliasing
+    - seeded autograd and validated gradients for elementwise add, divide, matmul, mean, reductions, and view transforms across CPU and Metal
+    - division gradients dispatch by device allowing CPU-only builds without Metal
 - macOS continuous integration caches builds, treats warnings as errors, and runs the test suite on every pull request.
 - Implementation requires macOS with Xcode 15+ and the Metal 4 SDK. The project does not build in this Linux environment, but agents must still attempt configuration and report failures.
 
@@ -23,8 +25,10 @@ This document captures the current state of the Orchard effort and the path forw
 1. Harden the fused FlashAttention backward kernels and benchmark training loops that depend on dropout.
 2. Extend the Tensor v0 operator set and expand autograd coverage beyond division, mean, and transpose.
 3. Replace remaining CPU fallbacks with optimised Metal kernels.
-4. Keep macOS CI green and broaden the matrix as needed.
-5. Benchmark FlashAttention and core tensor ops and publish performance data.
+4. Fix CMake configuration on non-Apple platforms so CPU-only builds and tests succeed without Objective-C++.
+5. Vendor or locate GoogleTest locally to remove network dependencies from the test build.
+6. Keep macOS CI green and broaden the matrix as needed.
+7. Benchmark FlashAttention and core tensor ops and publish performance data.
 
 ## Milestones
 1. FlashAttention backward kernels with dropout support unlocking end-to-end training benchmarks.

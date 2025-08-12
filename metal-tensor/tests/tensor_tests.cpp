@@ -78,6 +78,30 @@ TEST(TensorTest, CloneDistinctStorage) {
   EXPECT_NE(cptr[0], base[0]);
 }
 
+TEST(TensorTest, DetachSharesStorage) {
+  std::array<std::int64_t, 8> shape{2, 1, 1, 1, 1, 1, 1, 1};
+  Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *base = static_cast<float *>(t.data_ptr());
+  base[0] = 1.0f;
+  Tensor d = t.detach();
+  EXPECT_TRUE(d.is_alias_of(t));
+  auto *dptr = static_cast<float *>(d.data_ptr());
+  dptr[0] = 5.0f;
+  EXPECT_FLOAT_EQ(base[0], 5.0f);
+}
+
+TEST(TensorTest, CloneBeforeDetachIndepStorage) {
+  std::array<std::int64_t, 8> shape{2, 1, 1, 1, 1, 1, 1, 1};
+  Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *base = static_cast<float *>(t.data_ptr());
+  base[0] = 1.0f;
+  Tensor d = t.clone().detach();
+  EXPECT_FALSE(d.is_alias_of(t));
+  auto *dptr = static_cast<float *>(d.data_ptr());
+  dptr[0] = 7.0f;
+  EXPECT_FLOAT_EQ(base[0], 1.0f);
+}
+
 TEST(TensorTest, FromDataZeroCopyAndDeleter) {
   std::array<std::int64_t, 8> shape{2, 1, 1, 1, 1, 1, 1, 1};
   void *raw = nullptr;
@@ -172,6 +196,34 @@ TEST(TensorAutogradTest, DivBackward) {
     EXPECT_FLOAT_EQ(bg[i], -ap[i] / (bp[i] * bp[i]));
   }
 }
+
+#ifndef __APPLE__
+TEST(TensorAutogradTest, DivBackwardSafeCpu) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *bp = static_cast<float *>(b.data_ptr());
+  ap[0] = 1.0f;
+  ap[1] = 2.0f;
+  ap[2] = 3.0f;
+  bp[0] = 1.0f;
+  bp[1] = 0.0f;
+  bp[2] = 2.0f;
+  a.set_requires_grad(true);
+  b.set_requires_grad(true);
+  Tensor c = a.div(b, true);
+  c.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  auto *bg = static_cast<float *>(b.grad().data_ptr());
+  EXPECT_FLOAT_EQ(ag[0], 1.0f / bp[0]);
+  EXPECT_FLOAT_EQ(ag[1], 0.0f);
+  EXPECT_FLOAT_EQ(ag[2], 1.0f / bp[2]);
+  EXPECT_FLOAT_EQ(bg[0], -ap[0] / (bp[0] * bp[0]));
+  EXPECT_FLOAT_EQ(bg[1], 0.0f);
+  EXPECT_FLOAT_EQ(bg[2], -ap[2] / (bp[2] * bp[2]));
+}
+#endif
 
 TEST(TensorAutogradTest, DivScalarBackward) {
   std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
@@ -430,6 +482,7 @@ TEST(TensorTest, DivScalarMetalMatchesCpu) {
   for (int i = 0; i < 3; ++i)
     EXPECT_FLOAT_EQ(cp[i], mp[i]);
 }
+#endif
 
 TEST(TensorTest, DivScalarInplace) {
   std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
@@ -445,13 +498,45 @@ TEST(TensorTest, DivScalarInplace) {
   a.div_(2.0f);
   for (int i = 0; i < 3; ++i)
     EXPECT_FLOAT_EQ(ap[i], static_cast<float>(i + 2) / 2.0f);
+#ifdef __APPLE__
   Tensor mb = b.to(Device::mps);
   mb.div_(2.0f);
   Tensor bc = mb.to(Device::cpu);
   auto *bcp = static_cast<float *>(bc.data_ptr());
   for (int i = 0; i < 3; ++i)
     EXPECT_FLOAT_EQ(bcp[i], static_cast<float>(i + 2) / 2.0f);
+#endif
 }
+
+#ifdef __APPLE__
+TEST(TensorTest, DetachSharesStorageMetal) {
+  std::array<std::int64_t, 8> shape{2, 1, 1, 1, 1, 1, 1, 1};
+  Tensor cpu = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *base = static_cast<float *>(cpu.data_ptr());
+  base[0] = 1.0f;
+  Tensor m = cpu.to(Device::mps);
+  Tensor d = m.detach();
+  EXPECT_TRUE(d.is_alias_of(m));
+  d.fill(9.0f);
+  Tensor back = m.to(Device::cpu);
+  auto *bptr = static_cast<float *>(back.data_ptr());
+  EXPECT_FLOAT_EQ(bptr[0], 9.0f);
+}
+
+TEST(TensorTest, CloneBeforeDetachIndepStorageMetal) {
+  std::array<std::int64_t, 8> shape{2, 1, 1, 1, 1, 1, 1, 1};
+  Tensor cpu = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *base = static_cast<float *>(cpu.data_ptr());
+  base[0] = 1.0f;
+  Tensor m = cpu.to(Device::mps);
+  Tensor d = m.clone().detach();
+  EXPECT_FALSE(d.is_alias_of(m));
+  d.fill(7.0f);
+  Tensor back = m.to(Device::cpu);
+  auto *bptr = static_cast<float *>(back.data_ptr());
+  EXPECT_FLOAT_EQ(bptr[0], 1.0f);
+}
+#endif
 
 TEST(TensorTest, DivByZeroThrows) {
   std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
@@ -482,6 +567,7 @@ TEST(TensorTest, DivSafeMasksZero) {
   EXPECT_FLOAT_EQ(cp[0], 0.0f);
   EXPECT_FLOAT_EQ(cp[1], 1.0f);
   EXPECT_FLOAT_EQ(cp[2], 1.5f);
+#ifdef __APPLE__
   Tensor ma = a.to(Device::mps);
   Tensor mb = b.to(Device::mps);
   Tensor mc = ma.div(mb, true).to(Device::cpu);
@@ -489,6 +575,7 @@ TEST(TensorTest, DivSafeMasksZero) {
   EXPECT_FLOAT_EQ(mp[0], 0.0f);
   EXPECT_FLOAT_EQ(mp[1], 1.0f);
   EXPECT_FLOAT_EQ(mp[2], 1.5f);
+#endif
 }
 
 TEST(TensorTest, DivScalarSafeMasksZero) {
@@ -501,13 +588,16 @@ TEST(TensorTest, DivScalarSafeMasksZero) {
   auto *cp = static_cast<float *>(cpu.data_ptr());
   for (int i = 0; i < 3; ++i)
     EXPECT_FLOAT_EQ(cp[i], 0.0f);
+#ifdef __APPLE__
   Tensor ma = a.to(Device::mps);
   Tensor mc = ma.div(0.0f, true).to(Device::cpu);
   auto *mp = static_cast<float *>(mc.data_ptr());
   for (int i = 0; i < 3; ++i)
     EXPECT_FLOAT_EQ(mp[i], 0.0f);
+#endif
 }
 
+#ifdef __APPLE__
 TEST(TensorTest, MatmulMetalMatchesCpu) {
   std::array<std::int64_t, 8> aShape{2, 3, 1, 1, 1, 1, 1, 1};
   std::array<std::int64_t, 8> bShape{3, 2, 1, 1, 1, 1, 1, 1};
@@ -571,6 +661,7 @@ TEST(TensorTest, MeanMetalMatchesCpu) {
   auto *mp = static_cast<float *>(mb.data_ptr());
   EXPECT_FLOAT_EQ(cp[0], mp[0]);
 }
+#endif
 
 TEST(TensorTest, SumMeanAxisCpuMetal) {
   std::array<std::int64_t, 8> shape{2, 3, 4, 1, 1, 1, 1, 1};
@@ -617,7 +708,7 @@ TEST(TensorTest, FillCpu) {
   for (int i = 0; i < 4; ++i)
     EXPECT_FLOAT_EQ(p[i], 3.0f);
 }
-
+#ifdef __APPLE__
 TEST(TensorTest, FillMetalMatchesCpu) {
   std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
   Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);

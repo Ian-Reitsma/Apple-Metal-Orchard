@@ -8,6 +8,7 @@
 - allocation profiling with live tensor dumps for leak analysis
 - matmul, sum, mean, and view gradients extending the autograd graph beyond elementwise add
 - elementwise division through `Tensor::div` with matching backward propagation
+- division gradients now dispatch to CPU loops or Metal kernels based on device
 - elementwise add and mul alongside division support NumPy-style broadcasting semantics
 - constant tensor filling through `Tensor::fill` which sets all elements to a value on CPU or Metal
 - explicit detachment via `Tensor::detach` that returns a view sharing storage but clearing `requires_grad` and `grad_fn`
@@ -89,7 +90,11 @@ view gradients reshape without computation
                 .The detached view reports `requires_grad` as false and
         breaks gradient propagation,
     allowing intermediate results to be reused without contributing to backward
-        computations.
+        computations.Shared storage means that mutating the detached tensor also
+        updates the source tensor.
+        Tensor::is_alias_of verifies whether two tensors refer to the same
+        storage.Clone a tensor before detaching when independent buffers are
+        required to avoid unintended side effects.
 
         ##Elementwise Division
 
