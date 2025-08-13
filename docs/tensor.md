@@ -1,4 +1,4 @@
-#Tensor v0 Overview
+# Tensor v0 Overview
 
 `metal-tensor` provides a minimal tensor API backed by Apple Metal. It is the foundation for a fully Metal-native forward and backward pass that aims to surpass PyTorch on Apple Silicon. This document outlines the features currently implemented and how to use them.
 
@@ -22,53 +22,24 @@ Building requires Apple's command line tools and the Metal SDK.
 1. Install the tools with `xcode-select --install`.
 2. Confirm availability with `xcode-select -p` and ensure a path is printed.
 3. Verify the SDK using `xcrun --sdk macosx --show-sdk-path`.
-4. Configure and build with `cmake -S . -B build` followed by `cmake --build build`. The scripts align `CMAKE_OSX_SYSROOT` and `CMAKE_OSX_DEPLOYMENT_TARGET` automatically.
+4. Configure with `cmake -S . -B build -G Ninja` followed by `cmake --build build`. Supply `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to force CMake to use the vendored `third_party/googletest` tree or a system package and keep configuration offline. Continuous integration fetches GoogleTest from the network by default, but local builds should prefer the offline mode. The scripts align `CMAKE_OSX_SYSROOT` and `CMAKE_OSX_DEPLOYMENT_TARGET` automatically; see `README.md#building` and `AGENTS.md#build-protocol` for more on the process.
 5. Contributors on Linux still run these commands and record the failure output in pull requests. The build system only queries Metal when `CMAKE_SYSTEM_NAME` equals `Darwin` and `FindMetal.cmake` exits immediately on other hosts so the CPU fallback compiles.
 
-##Zero -
-    Copy Construction
+## Zero-Copy Construction
 
-        Wrap existing host data without copying using Tensor::fromData.The
-            pointer must be sixty -
-    four byte aligned and may carry an optional deleter.Include metal / core /
-        tensor / Tensor.h,
-    define a buffer such as float buffer[16] aligned to sixty - four bytes,
-    and call Tensor::fromData on that buffer with the desired shape, data type,
-    and device
-            .
+Wrap existing host data without copying using `Tensor::fromData`. The pointer must be sixty-four byte aligned and may carry an optional deleter. Include `metal/core/tensor/Tensor.h`, define a buffer such as `float buffer[16]` aligned to sixty-four bytes, and call `Tensor::fromData` on that buffer with the desired shape, data type, and device.
 
-##Slice and View Semantics
+## Slice and View Semantics
 
-            view now checks that the requested shape covers the same number of
-                elements as the original tensor
-            .slice records the starting offset in bytes so chained views
-                maintain correct addressing
-            .
+`view` now checks that the requested shape covers the same number of elements as the original tensor. `slice` records the starting offset in bytes so chained views maintain correct addressing.
 
-##Device Transfers
+## Device Transfers
 
-            Tensor::to moves data between devices.When source and
-                destination devices match,
-    the call returns a view with shared storage
-        .CPU to CPU copies use memcpy while CPU to Metal copies employ a
-            transient MTLBlitCommandEncoder obtained from MetalContext.For
-                example,
-    a CPU tensor created with Tensor::empty can be sent to the mps device via
-        to(Device::mps) and
-        then returned to the CPU.
+`Tensor::to` moves data between devices. When source and destination devices match, the call returns a view with shared storage. CPU to CPU copies use `memcpy` while CPU to Metal copies employ a transient `MTLBlitCommandEncoder` obtained from `MetalContext`. For example, a CPU tensor created with `Tensor::empty` can be sent to the `mps` device via `to(Device::mps)` and then returned to the CPU.
 
-##Allocation Profiling
+## Allocation Profiling
 
-            Set ORCHARD_TENSOR_PROFILE to one to log tensor storage
-            allocations and frees to
-            / tmp / orchard_tensor_profile.log.The log records alloc,
-    free,
-    and live events with storage labels and sizes
-                .Call dump_live_tensors at any point to append all currently
-            live allocations to the log.Include metal
-            / core / tensor /
-            Debug.h and invoke dump_live_tensors
-                .
+Set `ORCHARD_TENSOR_PROFILE` to one to log tensor storage allocations and frees to `/tmp/orchard_tensor_profile.log`. The log records alloc, free, and live events with storage labels and sizes. Call `dump_live_tensors` at any point to append all currently live allocations to the log. Include `metal/core/tensor/Debug.h` and invoke `dump_live_tensors`.
 
 ## Constant Filling
 
@@ -99,6 +70,7 @@ Elementwise `add`, `mul`, and `div` accept operands with different shapes follow
 `Tensor::sum` and `Tensor::mean` accept a dimension argument and an optional `keepdim` flag. Reductions collapse the specified axis, and `keepdim` retains a length-one dimension. Gradients expand along reduced axes so the original tensor shapes receive appropriate updates.
 
 ## Next Steps
+
 - Expand the operator set and autograd coverage
 - Implement optimised Metal kernels for core operations
 - Grow the test suite to cover new functionality

@@ -21,20 +21,24 @@ add_library(orchard_metal STATIC)
 
 # Restrict Objective-C++ runtime to Apple hosts. CpuKernels.cpp mirrors the
 # Metal entry points for CPU-only builds so no .mm files are compiled.
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if(APPLE)
   target_sources(orchard_metal PRIVATE
     metal/runtime/runtime.mm
     metal/runtime/MetalKernels.mm
   )
 else()
   target_sources(orchard_metal PRIVATE
-    metal/runtime/runtime_cpu.cpp
+    metal/runtime/runtime.cpp
     metal/runtime/CpuKernels.cpp
   )
 endif()
 
 target_include_directories(orchard_metal PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/metal)
 target_link_libraries(orchard_metal PUBLIC orchard_core)
+
+if(APPLE)
+  target_link_libraries(orchard_metal PRIVATE Metal::Metal)
+endif()
 
 if(BUILD_TESTING)
   add_subdirectory(tests)

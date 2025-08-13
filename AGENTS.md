@@ -23,8 +23,10 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 
 ## Build Protocol
 1. Obtain Xcode 15+ with the Metal 4 SDK; ensure command line tools are active. Builds only query the Metal SDK when `CMAKE_SYSTEM_NAME` is `Darwin` and `FindMetal.cmake` registers a stub `Metal::Metal` target elsewhere so CPU-only hosts can proceed without the SDK.
-2. From the repo root, configure with CMake into a `build/` dir using Ninja. Pass `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to keep configuration offline and rely on the trimmed `third_party/googletest` tree or a system package; optionally enable `-DORCHARD_BUILD_EXPERIMENTAL=ON` to compile the legacy PyTorch bridge under `experimental/`.
-3. Build the default target. Darwin emits `liborchard_core.a` and `liborchard_metal.a`; other platforms produce only `liborchard_core.a` as a CPU fallback.
+2. From the repo root, configure with CMake into a `build/` dir using Ninja.
+3. Supply `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to force CMake to use the vendored `third_party/googletest` tree or a system package and keep configuration offline. Continuous integration fetches GoogleTest from the network by default, but local contributors should prefer this offline mode when the trimmed tree is available.
+4. Optionally enable `-DORCHARD_BUILD_EXPERIMENTAL=ON` to compile the legacy PyTorch bridge under `experimental/`.
+5. Build the default target. Darwin emits `liborchard_core.a` and `liborchard_metal.a`; other platforms produce only `liborchard_core.a` as a CPU fallback.
 
 ## Test Protocol
 1. With a configured build tree, run the `test` target. Tests live under `metal-tensor/tests/` and exercise CPU/Metal paths.

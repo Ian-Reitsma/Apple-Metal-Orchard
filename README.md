@@ -23,9 +23,9 @@
 
 ## Building
 1. Install Xcode 15+, the Metal 4 SDK, and the command line tools.
-2. From the repository root run `cmake -S . -B build -G Ninja` to produce build files in the `build/` directory. CMake only queries the Metal SDK when `CMAKE_SYSTEM_NAME` is `Darwin`; other hosts receive a stub `Metal::Metal` target and build the CPU runtime. Pass `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to use the trimmed copy under `third_party/googletest` or a system package and keep configuration offline. The Ninja generator matches the GitHub Actions workflow.
+2. From the repository root run `cmake -S . -B build -G Ninja` to produce build files in the `build/` directory. CMake only queries the Metal SDK when `CMAKE_SYSTEM_NAME` is `Darwin`; other hosts receive a stub `Metal::Metal` target and build the CPU runtime. Supply `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to force CMake to use the vendored `third_party/googletest` tree or a system package and keep configuration offline. Continuous integration fetches GoogleTest from the network by default, but local builds should prefer the offline mode. The Ninja generator matches the GitHub Actions workflow; see `AGENTS.md#build-protocol` for the full checklist.
 3. Invoke `cmake --build build` to compile the static libraries and unit tests. Pass `-DORCHARD_BUILD_EXPERIMENTAL=ON` during configuration to compile the legacy PyTorch bridge.
-4. Non-Apple hosts follow the same steps. Metal discovery is skipped by the `CMAKE_SYSTEM_NAME` check and only `liborchard_core.a` is produced. Capture any diagnostics and see docs/tensor.md#toolchain for details.
+4. Non-Apple hosts follow the same steps. Metal discovery is skipped by the `CMAKE_SYSTEM_NAME` check and only `liborchard_core.a` is produced. Capture any diagnostics and see [docs/tensor.md#toolchain](docs/tensor.md#toolchain) for details.
 
 ## Testing
 Run `cmake --build build --target test` to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks, and autograd gradients. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
