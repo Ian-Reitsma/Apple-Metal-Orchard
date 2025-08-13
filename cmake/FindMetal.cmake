@@ -1,7 +1,9 @@
 # FindMetal.cmake - locate Metal frameworks and configure macOS SDK
 
-if(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-    message(FATAL_ERROR "Metal SDK requires macOS and Xcode command line tools.")
+if(NOT APPLE)
+    add_library(Metal::Metal INTERFACE IMPORTED)
+    set(Metal_FOUND TRUE)
+    return()
 endif()
 
 find_program(METAL_XCRUN xcrun REQUIRED)

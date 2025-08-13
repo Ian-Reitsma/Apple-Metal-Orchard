@@ -1,9 +1,17 @@
 if(EXISTS "${PROJECT_SOURCE_DIR}/third_party/googletest/CMakeLists.txt")
   add_subdirectory("${PROJECT_SOURCE_DIR}/third_party/googletest" googletest)
   set(GTEST_LIB gtest_main)
-else()
+elseif(FETCHCONTENT_FULLY_DISCONNECTED)
   find_package(GTest REQUIRED)
   set(GTEST_LIB GTest::gtest_main)
+else()
+  include(FetchContent)
+  FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+  )
+  FetchContent_MakeAvailable(googletest)
+  set(GTEST_LIB gtest_main)
 endif()
 
 add_executable(metal_tensor_tests tensor_tests.cpp multi_device_tests.cpp)
@@ -14,3 +22,7 @@ target_compile_features(metal_tensor_tests PRIVATE cxx_std_20)
 
 add_test(NAME metal_tensor_tests COMMAND metal_tensor_tests)
 
+# Ensure the default test target builds the unit test binary when available.
+if(TARGET test)
+  add_dependencies(test metal_tensor_tests)
+endif()

@@ -27,11 +27,11 @@
 
 ## Building
 1. Ensure Xcode 15+, the Metal 4 SDK, and command line tools are installed.
-2. From the repository root run cmake -S . -B build -G Ninja followed by cmake --build build to configure and build the library.
-3. Linux hosts cannot compile the project but should still attempt these commands and include the failure output in pull requests.
+2. From the repository root run `cmake -S . -B build -G Ninja` followed by `cmake --build build` to configure and build the library. CMake consults the Metal SDK only when `CMAKE_SYSTEM_NAME` is `Darwin`; other platforms receive a stub `Metal::Metal` target and compile the CPU runtime. Supplying `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` during configuration directs tests to the trimmed `third_party/googletest` tree or a system package and keeps the process offline.
+3. Non-Apple hosts follow the same steps and produce only `liborchard_core.a`; include any diagnostic output in pull requests.
 
 ## Testing
-Invoke the tests with cmake --build build --target test. The suite covers contiguity, CPU arithmetic, command-queue pooling, multi-device CPU↔Metal↔CPU transfers, mixed CPU→Metal→CPU→Metal sequences, multi-threaded large tensor moves, profiling log validation with matching alloc/free counts, silent behaviour when ORCHARD_TENSOR_PROFILE is unset, alignment and zero-copy checks, and autograd gradients for elementwise add, multiply, and transpose.
+Invoke the tests with `cmake --build build --target test`. The suite covers contiguity, CPU arithmetic, command-queue pooling, multi-device CPU↔Metal↔CPU transfers, mixed CPU→Metal→CPU→Metal sequences, multi-threaded large tensor moves, profiling log validation with matching alloc/free counts, silent behaviour when `ORCHARD_TENSOR_PROFILE` is unset, alignment and zero-copy checks, and autograd gradients for elementwise add, multiply, and transpose.
 
 ## Milestones
 1. Autograd support for a base operator set including matmul and reductions.

@@ -15,23 +15,17 @@
 - Metal kernels drive forward and backward passes for matmul and whole-tensor reductions and include a dedicated mean kernel;
 view gradients reshape without computation
 
-    ##Toolchain
+## Toolchain
 
-        Building
-  requires Apple's Xcode command line tools and the Metal SDK.
+Building requires Apple's command line tools and the Metal SDK.
 
-    1. Install the tools with xcode -
-    select-- install.2. Confirm availability by running xcode - select -
-    p and verifying a path is printed.3. Verify the SDK with xcrun-- sdk
-        macosx-- show -
-    sdk - path.4. Configure and build the project with cmake - S.-
-    B build followed by cmake-- build build
-        .The scripts automatically align CMAKE_OSX_SYSROOT and
-            CMAKE_OSX_DEPLOYMENT_TARGET with the detected SDK
-        .5. Agents working on Linux must still attempt these commands and
-            record the failure output in pull requests.
+1. Install the tools with `xcode-select --install`.
+2. Confirm availability with `xcode-select -p` and ensure a path is printed.
+3. Verify the SDK using `xcrun --sdk macosx --show-sdk-path`.
+4. Configure and build with `cmake -S . -B build` followed by `cmake --build build`. The scripts align `CMAKE_OSX_SYSROOT` and `CMAKE_OSX_DEPLOYMENT_TARGET` automatically.
+5. Contributors on Linux still run these commands and record the failure output in pull requests. The build system only queries Metal when `CMAKE_SYSTEM_NAME` equals `Darwin` and `FindMetal.cmake` exits immediately on other hosts so the CPU fallback compiles.
 
-    ##Zero -
+##Zero -
     Copy Construction
 
         Wrap existing host data without copying using Tensor::fromData.The
@@ -43,7 +37,7 @@ view gradients reshape without computation
     and device
             .
 
-        ##Slice and View Semantics
+##Slice and View Semantics
 
             view now checks that the requested shape covers the same number of
                 elements as the original tensor
@@ -51,7 +45,7 @@ view gradients reshape without computation
                 maintain correct addressing
             .
 
-        ##Device Transfers
+##Device Transfers
 
             Tensor::to moves data between devices.When source and
                 destination devices match,
@@ -63,7 +57,7 @@ view gradients reshape without computation
         to(Device::mps) and
         then returned to the CPU.
 
-            ##Allocation Profiling
+##Allocation Profiling
 
             Set ORCHARD_TENSOR_PROFILE to one to log tensor storage
             allocations and frees to
@@ -76,70 +70,35 @@ view gradients reshape without computation
             Debug.h and invoke dump_live_tensors
                 .
 
-            ##Constant Filling
+## Constant Filling
 
-            Tensor::fill sets every element of a tensor to the same value
-                .The call dispatches to runtime::metal_fill on the mps
-            device and executes a simple loop on the CPU
-                .
+`Tensor::fill` sets every element of a tensor to the same value. The call dispatches to `runtime::metal_fill` on the `mps` device and executes a simple loop on the CPU.
 
-            ##Detaching Tensors
+## Detaching Tensors
 
-            Tensor::detach produces a view of the original tensor that shares
-            storage but discards autograd metadata
-                .The detached view reports `requires_grad` as false and
-        breaks gradient propagation,
-    allowing intermediate results to be reused without contributing to backward
-        computations.Shared storage means that mutating the detached tensor also
-        updates the source tensor.
-        Tensor::is_alias_of verifies whether two tensors refer to the same
-        storage.Clone a tensor before detaching when independent buffers are
-        required to avoid unintended side effects.
+`Tensor::detach` returns a view of the original tensor that shares storage while discarding autograd metadata. The detached view reports `requires_grad` as false and blocks gradient propagation, allowing intermediate results to be reused without contributing to backward computations.
 
-        ##Elementwise Division
+- `x.detach().is_alias_of(x)` returns true and mutating the detached view updates the source tensor.
+- Call `clone` before detaching when independent buffers are required. `x.clone().detach()` can be mutated without affecting `x`.
+- `Tensor::is_alias_of` verifies whether two tensors refer to the same storage; see `metal-tensor/tests/tensor_tests.cpp` for `DetachSharesStorage` and `CloneBeforeDetachIndepStorage`.
 
-        Tensor::div divides one tensor by another
-        or by a scalar.Use Tensor::div(float) to return a new tensor or
-        Tensor::div_(float) to scale a tensor in place.In
-            - place variants participate in autograd only when requires_grad is
-              true.Gradients flow to the input tensor,
-    enabling normalization workflows without allocating
-    temporaries.CPU and Metal kernels provide identical semantics.
-        The divisor is scanned for zeros before execution and the call raises a
-        runtime error when any are found.Unsafe divisions therefore surface
-        immediately rather than yielding `inf` or `nan`.Pass `true` as the final
-        parameter to mask zeros instead, producing `0` at those positions and
-        zero gradients for the masked elements.
+## Elementwise Division
 
-    ##Broadcasting
+`Tensor::div` divides one tensor by another or by a scalar. Use `Tensor::div(float)` to return a new tensor or `Tensor::div_(float)` to scale a tensor in place. In-place variants participate in autograd only when `requires_grad` is true. Gradients flow to the input tensor, enabling normalization workflows without allocating temporaries. CPU and Metal kernels provide identical semantics. The divisor is scanned for zeros before execution and the call raises a runtime error when any are found. Pass `true` as the final parameter to mask zeros instead, producing `0` at those positions and zero gradients for the masked elements.
 
-    Elementwise add,
-    mul,
-    and div accept operands with different shapes following NumPy rules
-            .Dimensions of size one expand to match the other operand without
-        copying.Scalars combine with tensors,
-    vectors with matrices,
-    and higher - rank tensors broadcast as long as every axis is either equal
-        or one.Gradients collapse broadcasted axes during backpropagation so the
-           original tensor shapes receive accumulated updates.
+## Broadcasting
 
-           ##Metal Mean Kernel
+Elementwise `add`, `mul`, and `div` accept operands with different shapes following NumPy rules. Dimensions of size one expand to match the other operand without copying. Scalars combine with tensors, vectors with matrices, and higher-rank tensors broadcast as long as every axis is either equal or one. Gradients collapse broadcasted axes during backpropagation so the original tensor shapes receive accumulated updates.
 
-           Tensor::mean now dispatches to a Metal kernel that performs the
-           reduction and final division directly on the GPU,
-    eliminating the previous host - side post -
-        processing step and improving throughput on mps devices
-            .
+## Metal Mean Kernel
 
-        ##Dimensional Reductions
+`Tensor::mean` dispatches to a Metal kernel that performs the reduction and final division directly on the GPU, eliminating the previous host-side post-processing step and improving throughput on `mps` devices.
 
-        Tensor::sum and Tensor::mean accept a dimension argument and an optional
-        keepdim flag.Reductions collapse the specified axis,
-    and keepdim retains a length one dimension
-            .Gradients expand along reduced axes so the original tensor shapes
-        receive appropriate updates.
+## Dimensional Reductions
 
-        ##Next Steps
-        - Expand the
-          operator set and autograd coverage - Implement optimised Metal kernels
-        for core operations - Grow the test suite to cover new functionality
+`Tensor::sum` and `Tensor::mean` accept a dimension argument and an optional `keepdim` flag. Reductions collapse the specified axis, and `keepdim` retains a length-one dimension. Gradients expand along reduced axes so the original tensor shapes receive appropriate updates.
+
+## Next Steps
+- Expand the operator set and autograd coverage
+- Implement optimised Metal kernels for core operations
+- Grow the test suite to cover new functionality

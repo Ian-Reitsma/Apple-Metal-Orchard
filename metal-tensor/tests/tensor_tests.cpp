@@ -102,6 +102,36 @@ TEST(TensorTest, CloneBeforeDetachIndepStorage) {
   EXPECT_FLOAT_EQ(base[0], 1.0f);
 }
 
+#ifdef __APPLE__
+TEST(TensorTest, DetachSharesStorageMps) {
+  std::array<std::int64_t, 8> shape{2, 1, 1, 1, 1, 1, 1, 1};
+  Tensor cpu = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *base = static_cast<float *>(cpu.data_ptr());
+  base[0] = 8.0f;
+  Tensor metal = cpu.to(Device::mps);
+  Tensor d = metal.detach();
+  EXPECT_TRUE(d.is_alias_of(metal));
+  d.div_(2.0f);
+  Tensor back = metal.to(Device::cpu);
+  auto *bptr = static_cast<float *>(back.data_ptr());
+  EXPECT_FLOAT_EQ(bptr[0], 4.0f);
+}
+
+TEST(TensorTest, CloneBeforeDetachIndepStorageMps) {
+  std::array<std::int64_t, 8> shape{2, 1, 1, 1, 1, 1, 1, 1};
+  Tensor cpu = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *base = static_cast<float *>(cpu.data_ptr());
+  base[0] = 6.0f;
+  Tensor metal = cpu.to(Device::mps);
+  Tensor clone = metal.clone().detach();
+  EXPECT_FALSE(clone.is_alias_of(metal));
+  clone.div_(2.0f);
+  Tensor back = metal.to(Device::cpu);
+  auto *bptr = static_cast<float *>(back.data_ptr());
+  EXPECT_FLOAT_EQ(bptr[0], 6.0f);
+}
+#endif
+
 TEST(TensorTest, FromDataZeroCopyAndDeleter) {
   std::array<std::int64_t, 8> shape{2, 1, 1, 1, 1, 1, 1, 1};
   void *raw = nullptr;
