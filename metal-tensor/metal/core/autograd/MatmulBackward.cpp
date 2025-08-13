@@ -8,7 +8,8 @@ using namespace orchard::core::tensor;
 namespace orchard::core::autograd {
 
 MatmulBackward::MatmulBackward(const Tensor &aa, const Tensor &bb)
-    : a(aa), b(bb) {}
+    : a(aa), b(bb), pa(const_cast<Tensor *>(&aa)),
+      pb(const_cast<Tensor *>(&bb)) {}
 
 void MatmulBackward::apply(Tensor &g) {
   auto m = a.shape()[0];
@@ -51,12 +52,12 @@ void MatmulBackward::apply(Tensor &g) {
       }
     }
   }
-  accumulate(a, ga.to(a.device()));
-  accumulate(b, gb.to(b.device()));
-  if (a.grad_fn())
-    a.grad_fn()->apply(a.grad());
-  if (b.grad_fn())
-    b.grad_fn()->apply(b.grad());
+  accumulate(*pa, ga.to(pa->device()));
+  accumulate(*pb, gb.to(pb->device()));
+  if (pa->grad_fn() && pa->grad_fn().get() != this)
+    pa->grad_fn()->apply(pa->grad());
+  if (pb->grad_fn() && pb->grad_fn().get() != this)
+    pb->grad_fn()->apply(pb->grad());
 }
 
 } // namespace orchard::core::autograd

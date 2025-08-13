@@ -9,7 +9,7 @@ The `docs` directory collects narrative material that spans the entire project. 
 
 ## Current Status
 - `project_status.md` and `tensor.md` are current as of August 2025 and chart both the experimental bridge and the Metal-native tensor implementation.
-- Recent updates describe elementwise division, constant tensor filling, explicit detachment, the Metal mean kernel, and the CPU-only fallback documented in the Toolchain section where Metal discovery is gated on `CMAKE_SYSTEM_NAME` and a stub `Metal::Metal` target unblocks non-Apple hosts.
+- Recent updates describe elementwise division, constant tensor filling, explicit detachment, the Metal mean kernel, and the CPU-only fallback documented in the Toolchain section where Metal discovery is gated on `CMAKE_SYSTEM_NAME` and a stub `Metal::Metal` target unblocks non-Apple hosts. The Metal allocator now falls back to host memory when Metal APIs are unavailable while still logging profiling events. Autograd nodes retain inputs to block recursive gradients with regression tests for chained in-place scalar divisions and CPU add and mul backward paths, and broadcast tests align shapes to avoid crashes. The current test run reports failures for `TensorTest.DivSafeMasksZero`, `TensorTest.SumMeanAxisCpuMetal`, `TensorTest.ProfilingLogCreation`, `TensorTest.ProfilingLogEntries`, `TensorAutogradTest.DivScalarInplaceChainBackward`, `TensorAutogradTest.TransposeBackward`, and `ProfilingStressTest.AllocationAndQueuePooling`.
 - Design specifications under `metal-tensor/docs/` provide deeper notes on kernels, runtime contexts, and autograd scaffolding.
 - Documentation is actively maintained yet lacks full API references and architecture diagrams.
 

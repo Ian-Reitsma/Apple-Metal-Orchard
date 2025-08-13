@@ -7,6 +7,7 @@ namespace orchard::core::autograd {
 
 struct MeanBackward : Node {
   tensor::Tensor a;
+  tensor::Tensor *pa;
   int dim{0};
   bool keepdim{false};
   bool reduce_all{true};

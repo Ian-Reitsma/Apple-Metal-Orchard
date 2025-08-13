@@ -253,6 +253,50 @@ TEST(TensorAutogradTest, DivBackwardSafeCpu) {
   EXPECT_FLOAT_EQ(bg[1], 0.0f);
   EXPECT_FLOAT_EQ(bg[2], -ap[2] / (bp[2] * bp[2]));
 }
+
+TEST(TensorAutogradTest, AddBackwardCpu) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *bp = static_cast<float *>(b.data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    ap[i] = static_cast<float>(i);
+    bp[i] = static_cast<float>(i * 2);
+  }
+  a.set_requires_grad(true);
+  b.set_requires_grad(true);
+  Tensor c = a.add(b);
+  c.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  auto *bg = static_cast<float *>(b.grad().data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_FLOAT_EQ(ag[i], 1.0f);
+    EXPECT_FLOAT_EQ(bg[i], 1.0f);
+  }
+}
+
+TEST(TensorAutogradTest, MulBackwardCpu) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *bp = static_cast<float *>(b.data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    ap[i] = static_cast<float>(i + 1);
+    bp[i] = static_cast<float>(i + 2);
+  }
+  a.set_requires_grad(true);
+  b.set_requires_grad(true);
+  Tensor c = a.mul(b);
+  c.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  auto *bg = static_cast<float *>(b.grad().data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_FLOAT_EQ(ag[i], bp[i]);
+    EXPECT_FLOAT_EQ(bg[i], ap[i]);
+  }
+}
 #endif
 
 TEST(TensorAutogradTest, DivScalarBackward) {
@@ -281,6 +325,44 @@ TEST(TensorAutogradTest, DivScalarInplaceBackward) {
   auto *ag = static_cast<float *>(a.grad().data_ptr());
   for (int i = 0; i < 3; ++i)
     EXPECT_FLOAT_EQ(ag[i], 0.5f);
+}
+
+TEST(TensorAutogradTest, DivScalarInplaceChainBackward) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  Tensor tmp = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *tp = static_cast<float *>(tmp.data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    ap[i] = static_cast<float>(i + 1);
+    tp[i] = static_cast<float>(i + 1);
+  }
+  a.set_requires_grad(true);
+  tmp.set_requires_grad(true);
+  Tensor b = a.add(tmp);
+  b.div_(2.0f);
+  b.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  auto *tg = static_cast<float *>(tmp.grad().data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_FLOAT_EQ(ag[i], 1.0f);
+    EXPECT_FLOAT_EQ(tg[i], 1.0f);
+  }
+}
+
+TEST(TensorAutogradTest, DivScalarDoubleInplaceBackward) {
+  std::array<std::int64_t, 8> shape{3, 1, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  for (int i = 0; i < 3; ++i)
+    ap[i] = static_cast<float>(i + 4);
+  a.set_requires_grad(true);
+  a.div_(2.0f);
+  a.div_(2.0f);
+  a.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  for (int i = 0; i < 3; ++i)
+    EXPECT_FLOAT_EQ(ag[i], 0.25f);
 }
 
 TEST(TensorAutogradTest, DetachNoGrad) {
@@ -1131,7 +1213,7 @@ TEST(TensorBroadcastTest, ScalarTensor) {
 }
 
 TEST(TensorBroadcastTest, VectorMatrix) {
-  std::array<std::int64_t, 8> vShape{4, 1, 1, 1, 1, 1, 1, 1};
+  std::array<std::int64_t, 8> vShape{1, 4, 1, 1, 1, 1, 1, 1};
   std::array<std::int64_t, 8> mShape{3, 4, 1, 1, 1, 1, 1, 1};
   Tensor v = Tensor::empty(vShape, DType::f32, Device::cpu);
   Tensor m = Tensor::empty(mShape, DType::f32, Device::cpu);

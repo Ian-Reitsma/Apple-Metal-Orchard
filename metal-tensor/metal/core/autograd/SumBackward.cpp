@@ -7,9 +7,11 @@ using namespace orchard::core::tensor;
 
 namespace orchard::core::autograd {
 
-SumBackward::SumBackward(const Tensor &aa) : a(aa) {}
+SumBackward::SumBackward(const Tensor &aa)
+    : a(aa), pa(const_cast<Tensor *>(&aa)) {}
 SumBackward::SumBackward(const Tensor &aa, int d, bool k)
-    : a(aa), dim(d), keepdim(k), reduce_all(false) {}
+    : a(aa), pa(const_cast<Tensor *>(&aa)), dim(d), keepdim(k),
+      reduce_all(false) {}
 
 void SumBackward::apply(Tensor &g) {
   if (reduce_all) {
@@ -23,7 +25,7 @@ void SumBackward::apply(Tensor &g) {
       for (std::size_t i = 0; i < a.numel(); ++i)
         ptr[i] = v;
     }
-    accumulate(a, grad.to(a.device()));
+    accumulate(*pa, grad.to(pa->device()));
   } else {
     Tensor gv = g;
     if (!keepdim) {
@@ -36,10 +38,10 @@ void SumBackward::apply(Tensor &g) {
     Tensor base = Tensor::empty(a.shape(), DType::f32, g.device());
     base.fill(0.0f);
     Tensor grad = base.add(gv);
-    accumulate(a, grad.to(a.device()));
+    accumulate(*pa, grad.to(pa->device()));
   }
-  if (a.grad_fn())
-    a.grad_fn()->apply(a.grad());
+  if (pa->grad_fn() && pa->grad_fn().get() != this)
+    pa->grad_fn()->apply(pa->grad());
 }
 
 } // namespace orchard::core::autograd

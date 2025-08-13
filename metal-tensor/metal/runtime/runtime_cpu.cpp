@@ -1,3 +1,4 @@
+// CPU-only runtime implementation used when Metal APIs are unavailable.
 #include "runtime/CpuContext.h"
 #include "runtime/MetalContext.h"
 

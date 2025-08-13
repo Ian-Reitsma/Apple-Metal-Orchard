@@ -58,7 +58,8 @@ bool compute_broadcast(const std::array<std::int64_t, 8> &a_shape,
 } // namespace
 
 DivBackward::DivBackward(const Tensor &aa, const Tensor &bb, bool s)
-    : a(aa), b(bb), safe(s) {}
+    : a(aa), b(bb), pa(const_cast<Tensor *>(&aa)),
+      pb(const_cast<Tensor *>(&bb)), safe(s) {}
 
 void DivBackward::apply(Tensor &g) {
   if (g.device() == Device::mps) {
@@ -72,8 +73,12 @@ void DivBackward::apply(Tensor &g) {
                                   static_cast<const float *>(a.data_ptr()),
                                   static_cast<const float *>(b.data_ptr()),
                                   static_cast<float *>(gb.data_ptr()), n);
-    accumulate(a, ga);
-    accumulate(b, gb);
+    accumulate(*pa, ga);
+    accumulate(*pb, gb);
+    if (pa->grad_fn() && pa->grad_fn().get() != this)
+      pa->grad_fn()->apply(pa->grad());
+    if (pb->grad_fn() && pb->grad_fn().get() != this)
+      pb->grad_fn()->apply(pb->grad());
   } else {
     Tensor gg = g.to(Device::cpu);
     Tensor aa = a.to(Device::cpu);
@@ -109,13 +114,13 @@ void DivBackward::apply(Tensor &g) {
         bo -= info.b_strides[d] * info.shape[d];
       }
     }
-    accumulate(a, ga.to(a.device()));
-    accumulate(b, gb.to(b.device()));
+    accumulate(*pa, ga.to(pa->device()));
+    accumulate(*pb, gb.to(pb->device()));
   }
-  if (a.grad_fn())
-    a.grad_fn()->apply(a.grad());
-  if (b.grad_fn())
-    b.grad_fn()->apply(b.grad());
+  if (pa->grad_fn() && pa->grad_fn().get() != this)
+    pa->grad_fn()->apply(pa->grad());
+  if (pb->grad_fn() && pb->grad_fn().get() != this)
+    pb->grad_fn()->apply(pb->grad());
 }
 
 } // namespace orchard::core::autograd
