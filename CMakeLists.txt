@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 
-if(APPLE)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   project(orchard LANGUAGES C CXX OBJCXX)
   find_package(Metal REQUIRED)
   link_libraries(Metal::Metal)
@@ -15,6 +15,7 @@ else()
 endif()
 
 option(ORCHARD_BUILD_EXPERIMENTAL "Build experimental PyTorch components" OFF)
+option(FETCHCONTENT_FULLY_DISCONNECTED "Disable FetchContent network access" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -27,10 +28,9 @@ set(CMAKE_CXX_EXTENSIONS ON)
 add_compile_options(-std=gnu++20 -Wall -Wextra -pedantic)
 
 add_subdirectory(metal-tensor)
-if(APPLE)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   add_subdirectory(benchmarks)
-endif()
-
-if(ORCHARD_BUILD_EXPERIMENTAL)
-  add_subdirectory(experimental/orchard_ops)
+  if(ORCHARD_BUILD_EXPERIMENTAL)
+    add_subdirectory(experimental/orchard_ops)
+  endif()
 endif()

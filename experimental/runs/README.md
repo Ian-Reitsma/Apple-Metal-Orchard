@@ -12,4 +12,5 @@ Add subdirectories or scripts as needed to track specific experiments. Include a
 - Do not add large artifacts or commit generated run outputs; keep this directory untracked except for README files that explain experiment context.
 - Record experiment details using inline code for commands and flags, avoiding fenced code blocks.
 - Before submitting related changes elsewhere, run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root and note any failures in the pull request.
+- Use `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` when configuring offline so tests link against the trimmed `third_party/googletest` tree or a system package.
 - Keep commits focused with a single imperative summary line and reference changed files by path and line number in the pull request message.

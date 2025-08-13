@@ -11,7 +11,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
   - `docs/` records design specifications such as `design_spec_tensor_v0.md`.
 - `experimental/` – preserves the legacy PyTorch-based path. Subdirectories include `orchard_ops/` for C++ and Python extension modules, `benchmarks/` for performance scripts, `tests/` for PyTorch-driven verification, `kernel_lib/` for prebuilt FlashAttention binaries, and transient holders like `data/` and `runs/` which remain ignored by Git.
 - `docs/` – houses project-wide narrative material.
-- `.github/` – contains the continuous integration workflow `workflows/macos.yml` which configures the macOS builder.
+- `.github/` – contains continuous integration workflows: `workflows/macos.yml` for macOS and `workflows/linux.yml` for CPU-only builds.
 - `third_party/` – vendors external code. A trimmed `googletest` tree supplies headers and sources only; upstream tests, samples, and documentation were dropped to keep the repository small.
 
 ## Component Highlights
@@ -22,13 +22,14 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - Metal compute kernels cover elementwise add and multiply, matrix multiply, and reduce_sum. Shaders live under `metal/kernels/` and dispatch one thread per output element. CPU fallbacks in `metal/core/` activate when Metal is unavailable.
 
 ## Build Protocol
-1. Obtain Xcode 15+ with the Metal 4 SDK; ensure command line tools are active.
-2. From the repo root, configure with CMake into a `build/` dir (use Ninja). Optionally enable `-DORCHARD_BUILD_EXPERIMENTAL=ON` to compile the legacy PyTorch bridge under `experimental/`.
-3. Build the default target. Outputs include `liborchard_core.a` and `liborchard_metal.a`.
+1. Obtain Xcode 15+ with the Metal 4 SDK; ensure command line tools are active. Builds only query the Metal SDK when `CMAKE_SYSTEM_NAME` is `Darwin` and `FindMetal.cmake` registers a stub `Metal::Metal` target elsewhere so CPU-only hosts can proceed without the SDK.
+2. From the repo root, configure with CMake into a `build/` dir using Ninja. Pass `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to keep configuration offline and rely on the trimmed `third_party/googletest` tree or a system package; optionally enable `-DORCHARD_BUILD_EXPERIMENTAL=ON` to compile the legacy PyTorch bridge under `experimental/`.
+3. Build the default target. Darwin emits `liborchard_core.a` and `liborchard_metal.a`; other platforms produce only `liborchard_core.a` as a CPU fallback.
 
 ## Test Protocol
 1. With a configured build tree, run the `test` target. Tests live under `metal-tensor/tests/` and exercise CPU/Metal paths.
 2. Run configure + tests before every PR and capture failure logs in the PR description when toolchains are missing.
+3. When `FETCHCONTENT_FULLY_DISCONNECTED=ON` is set during configuration the `metal_tensor_tests` target links against the trimmed `third_party/googletest` tree or a system installation so the suite executes without network access.
 
 ## Benchmark Protocol
 - Invoke `python benchmarks/run.py -o /tmp/bench` after building to record kernel timings and hardware metadata. Results land under `/tmp/bench/<commit>/benchmarks.json`.

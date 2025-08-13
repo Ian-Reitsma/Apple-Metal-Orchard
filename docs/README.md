@@ -9,7 +9,7 @@ The `docs` directory collects narrative material that spans the entire project. 
 
 ## Current Status
 - `project_status.md` and `tensor.md` are current as of August 2025 and chart both the experimental bridge and the Metal-native tensor implementation.
-- Recent updates describe elementwise division, constant tensor filling, explicit detachment, and the Metal mean kernel.
+- Recent updates describe elementwise division, constant tensor filling, explicit detachment, the Metal mean kernel, and the CPU-only fallback documented in the Toolchain section where Metal discovery is gated on `CMAKE_SYSTEM_NAME` and a stub `Metal::Metal` target unblocks non-Apple hosts.
 - Design specifications under `metal-tensor/docs/` provide deeper notes on kernels, runtime contexts, and autograd scaffolding.
 - Documentation is actively maintained yet lacks full API references and architecture diagrams.
 
@@ -30,6 +30,7 @@ Scripts in `../benchmarks` record hardware information, runtime flags beginning 
 - Expand these documents whenever significant features land or roadmap items change.
 - Reference identifiers with inline code and avoid fenced code blocks.
 - Ensure any added file fits within the repository’s 5 MB artifact limit.
+- Note that tests use the trimmed `third_party/googletest` tree or a system package when `FETCHCONTENT_FULLY_DISCONNECTED=ON` is supplied during configuration so documentation referencing the test workflow should mention this offline mode.
 
 ## Contributor Protocol
 - Read `../AGENTS.md` before editing documentation; it describes required build and test steps and repository etiquette.
