@@ -64,6 +64,12 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 ## Current Status
 - Tensor v0 now layers elementwise division, constant filling, and explicit detachment on top of intrusive storage and host and device transfer paths.
 - Division backward dispatches by device, allowing CPU-only builds without Metal.
+- The Metal allocator falls back to host memory on non-Apple platforms while
+  still emitting profiling events for allocations and frees.
+- Autograd nodes retain input tensors to avoid recursive gradient application;
+  regression tests cover chained in-place scalar divisions and CPU add and mul
+  backward paths.
+- Vector and matrix broadcast tests now align shapes, resolving a prior crash.
 - Detached views share storage; `Tensor::is_alias_of` verifies aliasing and tests mutate through detached tensors and clone-before-detach paths.
 - A dedicated Metal kernel drives `Tensor::mean`, removing the final CPU post-processing step and aligning performance across devices.
 - Benchmarks cover add, mul, matmul, reduce_sum, mean, and transpose and log results beneath commit-specific directories for reproducible performance tracking.
@@ -71,6 +77,12 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - Continuous integration now covers `macos-13` (M1) and `macos-14` (M2) with Xcode 15.3 pinned and Homebrew updates disabled. A Linux job installs a clang-based Objective-C++ toolchain and is allowed to fail for diagnostics.
 - Documentation outlines tensor internals, profiling hooks, and contributor expectations yet remains a living reference.
 - GoogleTest ships as a minimal vendored copy under `third_party/googletest` so tests compile without network access; obtain upstream tests and samples from the official repository when needed.
+- The suite currently reports failures for `TensorTest.DivSafeMasksZero`,
+  `TensorTest.SumMeanAxisCpuMetal`, `TensorTest.ProfilingLogCreation`,
+  `TensorTest.ProfilingLogEntries`,
+  `TensorAutogradTest.DivScalarInplaceChainBackward`,
+  `TensorAutogradTest.TransposeBackward`, and
+  `ProfilingStressTest.AllocationAndQueuePooling`.
 
 ## Milestones
 1. Phase out the PyTorch bridge once Tensor v0 covers FlashAttention and essential autograd features.
@@ -84,3 +96,4 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 3. Replace remaining CPU fallbacks with tuned Metal kernels and delete redundant host code.
 4. Grow the test matrix to cover multi-device transfers, profiling scenarios, and stress conditions.
 5. Stand up a benchmarking harness that records hardware, runtime flags, and kernel timing for every commit while archiving JSON outputs per commit.
+6. Resolve the failing tests cited above and expand coverage for CPU-only execution paths.

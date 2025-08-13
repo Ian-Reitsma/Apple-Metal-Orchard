@@ -7,9 +7,11 @@ using namespace orchard::core::tensor;
 
 namespace orchard::core::autograd {
 
-MeanBackward::MeanBackward(const Tensor &aa) : a(aa) {}
+MeanBackward::MeanBackward(const Tensor &aa)
+    : a(aa), pa(const_cast<Tensor *>(&aa)) {}
 MeanBackward::MeanBackward(const Tensor &aa, int d, bool k)
-    : a(aa), dim(d), keepdim(k), reduce_all(false) {}
+    : a(aa), pa(const_cast<Tensor *>(&aa)), dim(d), keepdim(k),
+      reduce_all(false) {}
 
 void MeanBackward::apply(Tensor &g) {
   if (reduce_all) {
@@ -24,7 +26,7 @@ void MeanBackward::apply(Tensor &g) {
       for (std::size_t i = 0; i < a.numel(); ++i)
         ptr[i] = v;
     }
-    accumulate(a, grad.to(a.device()));
+    accumulate(*pa, grad.to(pa->device()));
   } else {
     Tensor gv = g;
     if (!keepdim) {
@@ -41,10 +43,10 @@ void MeanBackward::apply(Tensor &g) {
     Tensor sc = Tensor::empty({1, 1, 1, 1, 1, 1, 1, 1}, DType::f32, g.device());
     *static_cast<float *>(sc.data_ptr()) = scale;
     grad = grad.mul(sc);
-    accumulate(a, grad.to(a.device()));
+    accumulate(*pa, grad.to(pa->device()));
   }
-  if (a.grad_fn())
-    a.grad_fn()->apply(a.grad());
+  if (pa->grad_fn() && pa->grad_fn().get() != this)
+    pa->grad_fn()->apply(pa->grad());
 }
 
 } // namespace orchard::core::autograd

@@ -18,11 +18,11 @@ void Node::accumulate(Tensor &t, const Tensor &grad) {
   if (t.grad().device() == Device::mps) {
     auto shape = t.shape();
     auto strides = t.strides();
-    orchard::runtime::metal_add(
-        static_cast<const float *>(grad.data_ptr()),
-        static_cast<const float *>(t.grad().data_ptr()),
-        static_cast<float *>(t.grad().data_ptr()), shape.data(),
-        strides.data(), strides.data(), n);
+    orchard::runtime::metal_add(static_cast<const float *>(grad.data_ptr()),
+                                static_cast<const float *>(t.grad().data_ptr()),
+                                static_cast<float *>(t.grad().data_ptr()),
+                                shape.data(), strides.data(), strides.data(),
+                                n);
   } else {
     orchard::runtime::cpu_context().add(
         static_cast<const float *>(grad.data_ptr()),
@@ -34,19 +34,24 @@ void Node::accumulate(Tensor &t, const Tensor &grad) {
 void backward(Tensor &root) {
   if (!root.requires_grad())
     return;
-  if (!root.grad().data_ptr()) {
+  Tensor g;
+  if (root.grad().data_ptr()) {
+    g = root.grad();
+  } else {
     Tensor ones = Tensor::empty(root.shape(), root.dtype(), Device::cpu);
     auto *ptr = static_cast<float *>(ones.data_ptr());
     std::size_t n = root.numel();
     for (std::size_t i = 0; i < n; ++i)
       ptr[i] = 1.0f;
     if (root.device() == Device::mps)
-      root.set_grad(ones.to(Device::mps));
+      g = ones.to(Device::mps);
     else
-      root.set_grad(ones);
+      g = ones;
   }
   if (auto fn = root.grad_fn())
-    fn->apply(root.grad());
+    fn->apply(g);
+  else
+    root.set_grad(g);
 }
 
 } // namespace orchard::core::autograd

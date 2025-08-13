@@ -5,7 +5,7 @@ using namespace orchard::core::tensor;
 namespace orchard::core::autograd {
 
 DivScalarBackward::DivScalarBackward(const Tensor &aa, float s, bool sf)
-    : a(aa), scalar(s), safe(sf) {}
+    : a(aa), pa(const_cast<Tensor *>(&aa)), scalar(s), safe(sf) {}
 
 void DivScalarBackward::apply(Tensor &g) {
   Tensor gg = g.to(Device::cpu);
@@ -20,9 +20,12 @@ void DivScalarBackward::apply(Tensor &g) {
     for (std::size_t i = 0; i < n; ++i)
       gap[i] = gp[i] / scalar;
   }
-  accumulate(a, ga.to(a.device()));
-  if (a.grad_fn())
-    a.grad_fn()->apply(a.grad());
+  Tensor ga_t = ga.to(pa->device());
+  if (a.grad_fn()) {
+    a.grad_fn()->apply(ga_t);
+  } else {
+    accumulate(*pa, ga_t);
+  }
 }
 
 } // namespace orchard::core::autograd

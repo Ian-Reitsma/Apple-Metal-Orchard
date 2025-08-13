@@ -14,7 +14,9 @@
 - Intrusive reference counted `Storage` objects that permit zero-copy wrapping of external buffers through `Tensor::fromData`.
 - Host and device transfers mediated by `Tensor::to`, yielding zero-copy aliases when the destination `Device` matches the source.
 - Allocation profiling managed by `metal/common/Profiling.h`. When `ORCHARD_TENSOR_PROFILE` is present in the environment, allocation and release events stream to `/tmp/orchard_tensor_profile.log`, and `dump_live_tensors` reports outstanding buffers.
+- The Metal allocator falls back to host memory on non-Apple platforms while preserving allocation and free profiling logs.
 - Autograd foundations supplied by the `requires_grad` flag, gradient accumulation in `Tensor::grad`, and dedicated nodes for matmul, reductions, view, elementwise add and multiply, transpose, and division. `Tensor::detach` returns a view that shares storage but halts gradient propagation.
+- Autograd nodes retain input tensors to avoid recursive gradient application; regression tests validate chained in-place scalar divisions and CPU add and mul backward paths.
 - Initial Metal compute kernels, located under `metal-tensor/metal/kernels/`, implementing vector addition, matmul, whole-tensor reductions, and a dedicated mean kernel; each operation automatically falls back to CPU code when Metal execution is unavailable.
 - Constant filling through `Tensor::fill` sets every element to a value on both CPU and Metal devices.
 - `Tensor::div` checks denominators for zero and can mask them when a safe flag
@@ -29,6 +31,7 @@
 
 ## Testing
 Run `cmake --build build --target test` to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks, and autograd gradients. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
+Current failures on non-Apple hosts include `TensorTest.DivSafeMasksZero`, `TensorTest.SumMeanAxisCpuMetal`, `TensorTest.ProfilingLogCreation`, `TensorTest.ProfilingLogEntries`, `TensorAutogradTest.DivScalarInplaceChainBackward`, `TensorAutogradTest.TransposeBackward`, and `ProfilingStressTest.AllocationAndQueuePooling`.
 
 ## Benchmarking
 Invoke `python benchmarks/run.py -o /tmp/bench` after building to capture kernel timings, hardware details, and runtime flags. Results are written to `/tmp/bench/<commit>/benchmarks.json` where `<commit>` is the short Git hash. The harness exercises addition, multiplication, matmul, reduce_sum, mean, and transpose and enables reproducible comparisons across commits.
@@ -44,6 +47,7 @@ Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation ev
 
 ## Current Status
 - Tensor v0 handles intrusive storage, host and device transfers, elementwise division, constant filling, explicit detachment, and validated gradients for matmul, reductions, view, elementwise addition and multiply, division, and transpose.
+- The Metal allocator falls back to host memory on non-Apple platforms and broadcast tests align shapes to avoid prior crashes; the failing cases listed in the Testing section remain open.
 - The PyTorch bridge under `experimental/` remains available for regression checks but is omitted from standard builds.
 - macOS continuous integration enforces warnings-as-errors and executes the test suite; Linux hosts provide diagnostic failures only.
 - Fused FlashAttention backward kernels with dropout are present under `experimental/` and enable end-to-end gradient checks for keys and values.

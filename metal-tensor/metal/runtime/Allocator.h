@@ -101,9 +101,12 @@ inline void *MetalAllocator::allocate(std::size_t bytes, const char *label) {
   orchard::tensor_profile_log(oss.str());
   return result;
 #else
-  (void)bytes;
-  (void)label;
-  return nullptr;
+  void *p = nullptr;
+  posix_memalign(&p, 64, bytes);
+  std::ostringstream oss;
+  oss << "alloc " << p << ' ' << bytes << ' ' << (label ? label : "");
+  orchard::tensor_profile_log(oss.str());
+  return p;
 #endif
 }
 
@@ -115,7 +118,10 @@ inline void MetalAllocator::deallocate(void *ptr) {
   orchard::tensor_profile_log(oss.str());
   buffer = nil;
 #else
-  (void)ptr;
+  std::ostringstream oss;
+  oss << "free " << ptr;
+  orchard::tensor_profile_log(oss.str());
+  free(ptr);
 #endif
 }
 
