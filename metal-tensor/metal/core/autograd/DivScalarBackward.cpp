@@ -22,12 +22,14 @@ void DivScalarBackward::apply(Tensor &g) {
       gap[i] = gp[i] / scalar;
   }
   Tensor ga_t = ga.to(a.device());
+  Tensor pa_grad = ga_t.to(pa->device());
   if (a.grad_fn()) {
     a.grad_fn()->apply(ga_t);
   } else {
     accumulate(a, ga_t);
-    pa->set_grad(a.grad());
   }
+  if (!pa->grad().data_ptr())
+    pa->set_grad(pa_grad);
 }
 
 } // namespace orchard::core::autograd

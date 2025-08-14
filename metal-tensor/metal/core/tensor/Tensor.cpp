@@ -105,20 +105,18 @@ void cpu_broadcast_binary(const float *a, std::int64_t a_off,
                           const float *b, std::int64_t b_off,
                           const std::array<std::int64_t, 8> &bstrides,
                           float *out, const std::array<std::int64_t, 8> &shape,
-                          F fn, std::size_t bnumel = 0) {
+                          F fn) {
   std::size_t n = core::tensor::numel(shape);
   std::array<std::int64_t, 8> idx{};
   std::int64_t ao = a_off;
   std::int64_t bo = b_off;
-  std::int64_t bmax = 0;
-  if constexpr (Safe)
-    bmax = b_off + static_cast<std::int64_t>(bnumel ? bnumel - 1 : 0);
   for (std::size_t i = 0; i < n; ++i) {
     float bv = b[bo];
-    bool z = false;
     if constexpr (Safe) {
-      z = bv == 0.0f;
-      out[i] = z ? 0.0f : fn(a[ao], bv);
+      if (bv == 0.0f) [[unlikely]]
+        out[i] = 0.0f;
+      else
+        out[i] = fn(a[ao], bv);
     } else {
       out[i] = fn(a[ao], bv);
     }
@@ -133,12 +131,6 @@ void cpu_broadcast_binary(const float *a, std::int64_t a_off,
       ao -= astrides[d] * shape[d];
       if (bstrides[d] != 0)
         bo -= bstrides[d] * shape[d];
-    }
-    if constexpr (Safe) {
-      if (z && bstrides[0] != 0)
-        bo += bstrides[0];
-      if (bnumel && bo > bmax)
-        bo = bmax;
     }
   }
 }
@@ -584,7 +576,7 @@ Tensor Tensor::div(const Tensor &other, bool safe) const {
           static_cast<const float *>(other.impl_->storage->data),
           other.impl_->offset, info.b_strides,
           static_cast<float *>(out.impl_->storage->data), info.shape,
-          [](float x, float y) { return x / y; }, dn);
+          [](float x, float y) { return x / y; });
     } else {
       cpu_broadcast_binary<false>(
           static_cast<const float *>(impl_->storage->data), impl_->offset,
@@ -650,7 +642,12 @@ Tensor &Tensor::div_(float scalar, bool safe) {
     return *this;
   if (scalar == 0.0f && !safe)
     throw std::runtime_error("division by zero");
-  Tensor before = requires_grad_ ? clone() : Tensor{};
+  Tensor before;
+  if (requires_grad_) {
+    before = clone().detach();
+    before.set_requires_grad(true);
+    before.set_grad_fn(grad_fn_);
+  }
   std::size_t n = numel();
   if (impl_->device == Device::cpu) {
     auto *ap = static_cast<float *>(data_ptr());
@@ -761,38 +758,28 @@ Tensor Tensor::sum(int dim, bool keepdim) const {
   std::int64_t axisLen = impl_->shape[dim];
   std::int64_t axisStride = inStrides[dim];
   std::array<std::int64_t, 8> outShape{};
-  std::array<std::int64_t, 8> strides{};
   int oi = 0;
   for (int i = 0; i < r; ++i) {
     if (i == dim) {
-      if (keepdim) {
-        outShape[oi] = 1;
-        strides[oi] = inStrides[i];
-        ++oi;
-      }
+      if (keepdim)
+        outShape[oi++] = 1;
       continue;
     }
-    outShape[oi] = impl_->shape[i];
-    strides[oi] = inStrides[i];
-    ++oi;
+    outShape[oi++] = impl_->shape[i];
   }
-  for (int i = oi; i < 8; ++i) {
+  for (int i = oi; i < 8; ++i)
     outShape[i] = 0;
-    strides[i] = 0;
-  }
   Tensor out = empty(outShape, impl_->dtype, impl_->device);
   if (impl_->device == Device::cpu) {
     auto *ap = static_cast<const float *>(data_ptr());
     auto *op = static_cast<float *>(out.data_ptr());
     std::size_t n = core::tensor::numel(outShape);
+    std::array<std::int64_t, 8> idx{};
     for (std::size_t i = 0; i < n; ++i) {
-      std::size_t idx = i;
-      std::int64_t base = 0;
-      for (int d = oi - 1; d >= 0; --d) {
-        std::int64_t s = outShape[d];
-        std::int64_t coord = idx % s;
-        idx /= s;
-        base += coord * strides[d];
+      std::int64_t base = impl_->offset;
+      for (int d = 0; d < oi; ++d) {
+        int inDim = (!keepdim && d >= dim) ? d + 1 : d;
+        base += idx[d] * inStrides[inDim];
       }
       float s = 0.0f;
       std::int64_t pos = base;
@@ -801,6 +788,12 @@ Tensor Tensor::sum(int dim, bool keepdim) const {
         pos += axisStride;
       }
       op[i] = s;
+      for (int d = oi - 1; d >= 0; --d) {
+        idx[d]++;
+        if (idx[d] < outShape[d])
+          break;
+        idx[d] = 0;
+      }
     }
   } else if (impl_->device == Device::mps) {
     runtime::metal_reduce_sum_axis(
@@ -827,38 +820,28 @@ Tensor Tensor::mean(int dim, bool keepdim) const {
   std::int64_t axisLen = impl_->shape[dim];
   std::int64_t axisStride = inStrides[dim];
   std::array<std::int64_t, 8> outShape{};
-  std::array<std::int64_t, 8> strides{};
   int oi = 0;
   for (int i = 0; i < r; ++i) {
     if (i == dim) {
-      if (keepdim) {
-        outShape[oi] = 1;
-        strides[oi] = inStrides[i];
-        ++oi;
-      }
+      if (keepdim)
+        outShape[oi++] = 1;
       continue;
     }
-    outShape[oi] = impl_->shape[i];
-    strides[oi] = inStrides[i];
-    ++oi;
+    outShape[oi++] = impl_->shape[i];
   }
-  for (int i = oi; i < 8; ++i) {
+  for (int i = oi; i < 8; ++i)
     outShape[i] = 0;
-    strides[i] = 0;
-  }
   Tensor out = empty(outShape, impl_->dtype, impl_->device);
   if (impl_->device == Device::cpu) {
     auto *ap = static_cast<const float *>(data_ptr());
     auto *op = static_cast<float *>(out.data_ptr());
     std::size_t n = core::tensor::numel(outShape);
+    std::array<std::int64_t, 8> idx{};
     for (std::size_t i = 0; i < n; ++i) {
-      std::size_t idx = i;
-      std::int64_t base = 0;
-      for (int d = oi - 1; d >= 0; --d) {
-        std::int64_t s = outShape[d];
-        std::int64_t coord = idx % s;
-        idx /= s;
-        base += coord * strides[d];
+      std::int64_t base = impl_->offset;
+      for (int d = 0; d < oi; ++d) {
+        int inDim = (!keepdim && d >= dim) ? d + 1 : d;
+        base += idx[d] * inStrides[inDim];
       }
       float s = 0.0f;
       std::int64_t pos = base;
@@ -867,6 +850,12 @@ Tensor Tensor::mean(int dim, bool keepdim) const {
         pos += axisStride;
       }
       op[i] = s / static_cast<float>(axisLen);
+      for (int d = oi - 1; d >= 0; --d) {
+        idx[d]++;
+        if (idx[d] < outShape[d])
+          break;
+        idx[d] = 0;
+      }
     }
   } else if (impl_->device == Device::mps) {
     runtime::metal_mean_axis(

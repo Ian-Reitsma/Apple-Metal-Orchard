@@ -15,19 +15,19 @@ This document captures the current state of the Orchard effort and the path forw
   - CPU and Metal transfers through Tensor::to with runtime helpers for blit operations
       - allocation profiling and dump_live_tensors for debug tracing
         - tests for contiguity, CPU adds, command-queue pooling, reductions, elementwise division, filling, detachment, and profiling logs that toggle at runtime via `ORCHARD_TENSOR_PROFILE`
-      - each storage creation logs a single `alloc` entry and the final release logs a matching `free` entry to track allocator symmetry under load
+      - each storage creation logs a single `alloc` entry and the final release logs a matching `free` entry to track allocator symmetry under load, and stress tests assert the counts match even with queue pooling
     - helper Tensor::is_alias_of with tests mutating detached views and clone-before-detach paths to verify storage aliasing
     - seeded autograd and validated gradients for elementwise add, divide, matmul, mean, reductions, and view transforms across CPU and Metal
     - division gradients dispatch by device allowing CPU-only builds without Metal
     - the Metal allocator falls back to CPU memory on non-Apple hosts while still logging profiling events
       - `metal/runtime/runtime_cpu.cpp` implements this path so CPU builds omit Objective-C++ sources yet continue recording profiling data
-      - autograd nodes snapshot pre-mutation values to avoid recursive gradient application with tests covering chained and repeated in-place scalar divisions and CPU add and mul backward paths, and backward consumes the saved tensor so gradients accumulate once
+      - autograd nodes snapshot pre-mutation values to avoid recursive gradient application with tests covering single, repeated, and chained in-place scalar divisions and CPU add and mul backward paths, and backward consumes the saved tensor so gradients accumulate once
       - vector and matrix broadcast tests now align shapes to prevent prior crashes
-      - safe division resets broadcast offsets after zero denominators so CPU and Metal results match
-      - transpose backward routes gradients through the CPU kernel for host tensors and dispatches Metal kernels otherwise
+      - safe division masks zero denominators per element so CPU and Metal results match
+      - transpose backward routes gradients through the CPU kernel for host tensors and dispatches Metal kernels otherwise, forwarding the transposed gradient to upstream nodes
       - sum and mean recompute output shapes and strides when dimensions drop or are kept so axis reductions stay aligned
-      - profiling reads `ORCHARD_TENSOR_PROFILE` on each query and pairs every `alloc` with a matching `free`
-      - CPU-only builds run transpose, matmul, mean, and sum backward tests to ensure gradients remain correct without Metal
+      - profiling reads `ORCHARD_TENSOR_PROFILE` on each query and pairs every `alloc` with a matching `free`; `tensor_profile_reset` lets tests refresh the flag between runs
+        - CPU-only builds run transpose, matmul, mean, and sum backward tests to ensure gradients remain correct without Metal, expanding coverage beyond division
       - benchmarks compile on all hosts and report whether kernels executed on the CPU or Metal
     - macOS continuous integration caches builds, treats warnings as errors, and runs the test suite on every pull request.
 - Implementation targets macOS with Xcode 15+ and the Metal 4 SDK. The CPU runtime allows building and running tests in this Linux environment without GPU acceleration.

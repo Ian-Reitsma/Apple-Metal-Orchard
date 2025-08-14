@@ -35,9 +35,7 @@ public:
     return p;
   }
   void deallocate(void *ptr, const char *label) override {
-    std::ostringstream oss;
-    oss << "free " << label << ' ' << ptr;
-    orchard::tensor_profile_log(oss.str());
+    (void)label;
     free(ptr);
   }
 };
@@ -109,9 +107,7 @@ inline void *MetalAllocator::allocate(std::size_t bytes, const char *label) {
 }
 
 inline void MetalAllocator::deallocate(void *ptr, const char *label) {
-  std::ostringstream oss;
-  oss << "free " << label << ' ' << ptr;
-  orchard::tensor_profile_log(oss.str());
+  (void)label;
 #ifdef __OBJC__
   id<MTLBuffer> buffer = (__bridge_transfer id<MTLBuffer>)ptr;
   buffer = nil;

@@ -86,12 +86,13 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - Continuous integration now covers `macos-13` (M1) and `macos-14` (M2) with Xcode 15.3 pinned and Homebrew updates disabled. A Linux job installs a clang-based Objective-C++ toolchain and is allowed to fail for diagnostics.
 - Documentation outlines tensor internals, profiling hooks, and contributor expectations yet remains a living reference.
 - GoogleTest ships as a minimal vendored copy under `third_party/googletest` so tests compile without network access; obtain upstream tests and samples from the official repository when needed.
-  - Safe division masks zeros with correct broadcast stride handling so CPU and
-    Metal results align.
+  - Safe division masks zero denominators per element so CPU and Metal results
+    align.
   - Sum and mean shift stride metadata after dropping dimensions, producing
     accurate offsets when `keepdim` is false.
   - Profiling reads `ORCHARD_TENSOR_PROFILE` on every query and pairs each
-    `alloc` with a matching `free` entry even under load.
+    `alloc` with a matching `free` entry even under load; `tensor_profile_reset`
+    forces the flag to refresh between runs.
 
 ## Milestones
 1. Phase out the PyTorch bridge once Tensor v0 covers FlashAttention and essential autograd features.
