@@ -11,22 +11,22 @@ namespace {
 
 double bench_add(std::int64_t elements) {
   std::array<std::int64_t, 8> shape{elements, 1, 1, 1, 1, 1, 1, 1};
-  Tensor a = Tensor::empty(shape, DType::f32, Device::metal);
-  Tensor b = Tensor::empty(shape, DType::f32, Device::metal);
+  Tensor a = Tensor::empty(shape, DType::f32, Device::mps);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::mps);
   auto start = std::chrono::high_resolution_clock::now();
   Tensor c = a.add(b);
-  c.to(Device::cpu);
+  c = c.to(Device::cpu);
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration<double>(end - start).count();
 }
 
 double bench_mul(std::int64_t elements) {
   std::array<std::int64_t, 8> shape{elements, 1, 1, 1, 1, 1, 1, 1};
-  Tensor a = Tensor::empty(shape, DType::f32, Device::metal);
-  Tensor b = Tensor::empty(shape, DType::f32, Device::metal);
+  Tensor a = Tensor::empty(shape, DType::f32, Device::mps);
+  Tensor b = Tensor::empty(shape, DType::f32, Device::mps);
   auto start = std::chrono::high_resolution_clock::now();
   Tensor c = a.mul(b);
-  c.to(Device::cpu);
+  c = c.to(Device::cpu);
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration<double>(end - start).count();
 }
@@ -34,41 +34,41 @@ double bench_mul(std::int64_t elements) {
 double bench_matmul(std::int64_t m, std::int64_t n, std::int64_t k) {
   std::array<std::int64_t, 8> aShape{m, k, 1, 1, 1, 1, 1, 1};
   std::array<std::int64_t, 8> bShape{k, n, 1, 1, 1, 1, 1, 1};
-  Tensor a = Tensor::empty(aShape, DType::f32, Device::metal);
-  Tensor b = Tensor::empty(bShape, DType::f32, Device::metal);
+  Tensor a = Tensor::empty(aShape, DType::f32, Device::mps);
+  Tensor b = Tensor::empty(bShape, DType::f32, Device::mps);
   auto start = std::chrono::high_resolution_clock::now();
   Tensor c = a.matmul(b);
-  c.to(Device::cpu);
+  c = c.to(Device::cpu);
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration<double>(end - start).count();
 }
 
 double bench_reduce_sum(std::int64_t elements) {
   std::array<std::int64_t, 8> shape{elements, 1, 1, 1, 1, 1, 1, 1};
-  Tensor a = Tensor::empty(shape, DType::f32, Device::metal);
+  Tensor a = Tensor::empty(shape, DType::f32, Device::mps);
   auto start = std::chrono::high_resolution_clock::now();
   Tensor s = a.sum();
-  s.to(Device::cpu);
+  s = s.to(Device::cpu);
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration<double>(end - start).count();
 }
 
 double bench_mean(std::int64_t elements) {
   std::array<std::int64_t, 8> shape{elements, 1, 1, 1, 1, 1, 1, 1};
-  Tensor a = Tensor::empty(shape, DType::f32, Device::metal);
+  Tensor a = Tensor::empty(shape, DType::f32, Device::mps);
   auto start = std::chrono::high_resolution_clock::now();
   Tensor m = a.mean();
-  m.to(Device::cpu);
+  m = m.to(Device::cpu);
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration<double>(end - start).count();
 }
 
 double bench_transpose(std::int64_t m, std::int64_t n) {
   std::array<std::int64_t, 8> shape{m, n, 1, 1, 1, 1, 1, 1};
-  Tensor a = Tensor::empty(shape, DType::f32, Device::metal);
+  Tensor a = Tensor::empty(shape, DType::f32, Device::mps);
   auto start = std::chrono::high_resolution_clock::now();
   Tensor t = a.transpose(0, 1).contiguous();
-  t.to(Device::cpu);
+  t = t.to(Device::cpu);
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration<double>(end - start).count();
 }

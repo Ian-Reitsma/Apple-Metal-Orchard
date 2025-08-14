@@ -3,6 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <sstream>
+
+#include "common/Profiling.h"
 
 #ifdef __APPLE__
 #ifdef __OBJC__
@@ -18,24 +21,32 @@ class Allocator {
 public:
   virtual ~Allocator() = default;
   virtual void *allocate(std::size_t bytes, const char *label) = 0;
-  virtual void deallocate(void *ptr) = 0;
+  virtual void deallocate(void *ptr, const char *label) = 0;
 };
 
 class CpuAllocator : public Allocator {
 public:
-  void *allocate(std::size_t bytes, const char * /*label*/) override {
+  void *allocate(std::size_t bytes, const char *label) override {
     void *p = nullptr;
     posix_memalign(&p, 64, bytes);
+    std::ostringstream oss;
+    oss << "alloc " << label << ' ' << bytes << ' ' << p;
+    orchard::tensor_profile_log(oss.str());
     return p;
   }
-  void deallocate(void *ptr) override { free(ptr); }
+  void deallocate(void *ptr, const char *label) override {
+    std::ostringstream oss;
+    oss << "free " << label << ' ' << ptr;
+    orchard::tensor_profile_log(oss.str());
+    free(ptr);
+  }
 };
 
 class MetalAllocator : public Allocator {
 public:
   MetalAllocator();
   void *allocate(std::size_t bytes, const char *label) override;
-  void deallocate(void *ptr) override;
+  void deallocate(void *ptr, const char *label) override;
 
 private:
 #ifdef __OBJC__
@@ -82,15 +93,25 @@ inline void *MetalAllocator::allocate(std::size_t bytes, const char *label) {
                                   options:MTLResourceStorageModeShared];
   }
   buffer.label = [[NSString alloc] initWithUTF8String:label];
-  return (__bridge_retained void *)buffer;
+  void *p = (__bridge_retained void *)buffer;
+  std::ostringstream oss;
+  oss << "alloc " << label << ' ' << bytes << ' ' << p;
+  orchard::tensor_profile_log(oss.str());
+  return p;
 #else
   void *p = nullptr;
   posix_memalign(&p, 64, bytes);
+  std::ostringstream oss;
+  oss << "alloc " << label << ' ' << bytes << ' ' << p;
+  orchard::tensor_profile_log(oss.str());
   return p;
 #endif
 }
 
-inline void MetalAllocator::deallocate(void *ptr) {
+inline void MetalAllocator::deallocate(void *ptr, const char *label) {
+  std::ostringstream oss;
+  oss << "free " << label << ' ' << ptr;
+  orchard::tensor_profile_log(oss.str());
 #ifdef __OBJC__
   id<MTLBuffer> buffer = (__bridge_transfer id<MTLBuffer>)ptr;
   buffer = nil;

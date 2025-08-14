@@ -23,6 +23,19 @@ def collect_metadata() -> dict:
     }
 
 
+def detect_backend() -> str:
+    if platform.system() != "Darwin" or os.environ.get("ORCHARD_FORCE_CPU") == "1":
+        return "cpu"
+    return "metal"
+
+
+def collect_profile() -> list[str]:
+    log = Path("/tmp/orchard_tensor_profile.log")
+    if log.exists():
+        return log.read_text().splitlines()
+    return []
+
+
 def run_kernel(binary: Path, kernel: str, args: list[str]) -> dict:
     cmd = [str(binary), kernel] + args
     seconds = float(subprocess.check_output(cmd).decode().strip())
@@ -50,8 +63,13 @@ def main() -> None:
         ("transpose", ["1024", "1024"]),
     ]
 
+    if os.getenv("ORCHARD_TENSOR_PROFILE"):
+        Path("/tmp/orchard_tensor_profile.log").unlink(missing_ok=True)
+
     results = [run_kernel(bench_bin, k, args) for k, args in kernels]
     meta = collect_metadata()
+    meta["backend"] = detect_backend()
+    profile = collect_profile() if os.getenv("ORCHARD_TENSOR_PROFILE") else []
 
     out_root = Path(opts.out)
     commit_dir = out_root / meta["commit"]
@@ -61,7 +79,9 @@ def main() -> None:
         data = json.loads(out_file.read_text())
     else:
         data = {"metadata": meta, "runs": []}
-    data["runs"].append({"benchmarks": results, "timestamp": time.time()})
+    data["runs"].append(
+        {"benchmarks": results, "timestamp": time.time(), "profile": profile}
+    )
     out_file.write_text(json.dumps(data, indent=2))
 
     print(json.dumps({"metadata": meta, "benchmarks": results}, indent=2))

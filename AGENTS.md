@@ -2,6 +2,15 @@
 
 This manual governs every action within the `metal-orchard` repository. The project rebuilds a Metal-centric tensor runtime and kernel stack known internally as Tensor v0. All source code, tests, and documentation reside in this repository; no submodules or external trees exist. Every contributor must treat this document as the authoritative source of truth when modifying any file.
 
+## AGENTS File Inventory
+Automated agents must locate every `AGENTS.md` before editing files. Enumerate them from the repository root with `find . -name AGENTS.md -print` so no directory-level guidance is missed.
+
+As of this revision, these files exist:
+- `/AGENTS.md` – global policies for the entire tree.
+- `docs/AGENTS.md` – documentation directory guidance.
+- `metal-tensor/AGENTS.md` – core tensor library guidance.
+Introduce additional `AGENTS.md` files in new directories and update this inventory accordingly.
+
 ## Repository Cartography
 The directory layout is intentionally shallow to make navigation unambiguous:
 

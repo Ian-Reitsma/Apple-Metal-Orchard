@@ -21,11 +21,12 @@ void DivScalarBackward::apply(Tensor &g) {
     for (std::size_t i = 0; i < n; ++i)
       gap[i] = gp[i] / scalar;
   }
-  Tensor ga_t = ga.to(pa->device());
+  Tensor ga_t = ga.to(a.device());
   if (a.grad_fn()) {
     a.grad_fn()->apply(ga_t);
   } else {
-    accumulate(*pa, ga_t);
+    accumulate(a, ga_t);
+    pa->set_grad(a.grad());
   }
 }
 
