@@ -124,6 +124,7 @@ TEST(ProfilingStressTest, AllocationAndQueuePooling) {
   }
   EXPECT_EQ(allocs, frees);
   EXPECT_GT(allocs, 0u);
+  EXPECT_GT(frees, 0u);
   EXPECT_TRUE(ok);
 }
 

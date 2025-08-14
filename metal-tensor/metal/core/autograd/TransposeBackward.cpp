@@ -11,18 +11,12 @@ TransposeBackward::TransposeBackward(const Tensor &b, int d0, int d1)
 void TransposeBackward::apply(Tensor &g) {
   Tensor gg = g.to(pbase->device());
   Tensor out;
+  std::size_t m = static_cast<std::size_t>(base.shape()[dim0]);
+  std::size_t n = static_cast<std::size_t>(base.shape()[dim1]);
   if (gg.device() == Device::cpu) {
-    std::size_t m = static_cast<std::size_t>(base.shape()[dim0]);
-    std::size_t n = static_cast<std::size_t>(base.shape()[dim1]);
-    out = Tensor::empty(base.shape(), base.dtype(), Device::cpu);
-    auto *gp = static_cast<const float *>(gg.data_ptr());
-    auto *op = static_cast<float *>(out.data_ptr());
-    for (std::size_t k = 0; k < m * n; ++k)
-      op[k] = gp[k];
+    out = gg.transpose(dim1, dim0).detach();
   } else {
     out = Tensor::empty(base.shape(), base.dtype(), pbase->device());
-    std::size_t m = static_cast<std::size_t>(base.shape()[dim0]);
-    std::size_t n = static_cast<std::size_t>(base.shape()[dim1]);
     runtime::metal_transpose_backward(static_cast<const float *>(gg.data_ptr()),
                                       static_cast<float *>(out.data_ptr()), m,
                                       n);

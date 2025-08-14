@@ -298,6 +298,91 @@ TEST(TensorAutogradTest, MulBackwardCpu) {
     EXPECT_FLOAT_EQ(bg[i], ap[i]);
   }
 }
+
+TEST(TensorAutogradTest, TransposeBackwardCpu) {
+  std::array<std::int64_t, 8> aShape{2, 3, 1, 1, 1, 1, 1, 1};
+  std::array<std::int64_t, 8> cShape{3, 2, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(aShape, DType::f32, Device::cpu);
+  Tensor c = Tensor::empty(cShape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *cp = static_cast<float *>(c.data_ptr());
+  for (int i = 0; i < 6; ++i) {
+    ap[i] = static_cast<float>(i + 1);
+    cp[i] = static_cast<float>(i + 1);
+  }
+  a.set_requires_grad(true);
+  c.set_requires_grad(true);
+  Tensor t = a.transpose(0, 1);
+  Tensor prod = t.mul(c);
+  Tensor s = prod.sum();
+  s.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      EXPECT_FLOAT_EQ(ag[i * 3 + j], cp[j * 2 + i]);
+    }
+  }
+  auto *cg = static_cast<float *>(c.grad().data_ptr());
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      EXPECT_FLOAT_EQ(cg[i * 2 + j], ap[j * 3 + i]);
+    }
+  }
+}
+
+TEST(TensorAutogradTest, MatmulBackwardCpu) {
+  std::array<std::int64_t, 8> aShape{2, 3, 1, 1, 1, 1, 1, 1};
+  std::array<std::int64_t, 8> bShape{3, 2, 1, 1, 1, 1, 1, 1};
+  Tensor a = Tensor::empty(aShape, DType::f32, Device::cpu);
+  Tensor b = Tensor::empty(bShape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  auto *bp = static_cast<float *>(b.data_ptr());
+  for (int i = 0; i < 6; ++i)
+    ap[i] = static_cast<float>(i + 1);
+  for (int i = 0; i < 6; ++i)
+    bp[i] = static_cast<float>(i + 1);
+  a.set_requires_grad(true);
+  b.set_requires_grad(true);
+  Tensor c = a.matmul(b);
+  Tensor s = c.sum();
+  s.backward();
+  auto *ag = static_cast<float *>(a.grad().data_ptr());
+  std::array<float, 6> expected_a{3.0f, 7.0f, 11.0f, 3.0f, 7.0f, 11.0f};
+  for (int i = 0; i < 6; ++i)
+    EXPECT_FLOAT_EQ(ag[i], expected_a[i]);
+  auto *bg = static_cast<float *>(b.grad().data_ptr());
+  std::array<float, 6> expected_b{5.0f, 5.0f, 7.0f, 7.0f, 9.0f, 9.0f};
+  for (int i = 0; i < 6; ++i)
+    EXPECT_FLOAT_EQ(bg[i], expected_b[i]);
+}
+
+TEST(TensorAutogradTest, MeanBackwardCpu) {
+  std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
+  Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *p = static_cast<float *>(t.data_ptr());
+  for (int i = 0; i < 4; ++i)
+    p[i] = static_cast<float>(i + 1);
+  t.set_requires_grad(true);
+  Tensor m = t.mean();
+  m.backward();
+  auto *g = static_cast<float *>(t.grad().data_ptr());
+  for (int i = 0; i < 4; ++i)
+    EXPECT_FLOAT_EQ(g[i], 0.25f);
+}
+
+TEST(TensorAutogradTest, SumBackwardCpu) {
+  std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
+  Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *p = static_cast<float *>(t.data_ptr());
+  for (int i = 0; i < 4; ++i)
+    p[i] = static_cast<float>(i + 1);
+  t.set_requires_grad(true);
+  Tensor s = t.sum();
+  s.backward();
+  auto *g = static_cast<float *>(t.grad().data_ptr());
+  for (int i = 0; i < 4; ++i)
+    EXPECT_FLOAT_EQ(g[i], 1.0f);
+}
 #endif
 
 TEST(TensorAutogradTest, DivScalarBackward) {
@@ -802,8 +887,8 @@ TEST(TensorTest, DivByZeroThrows) {
     ap[i] = static_cast<float>(i + 1);
     bp[i] = static_cast<float>(i);
   }
-  EXPECT_THROW(a.div(b), std::runtime_error);
-  EXPECT_THROW(a.div(0.0f), std::runtime_error);
+  EXPECT_THROW(static_cast<void>(a.div(b)), std::runtime_error);
+  EXPECT_THROW(static_cast<void>(a.div(0.0f)), std::runtime_error);
 }
 
 TEST(TensorTest, DivSafeMasksZero) {
@@ -819,7 +904,7 @@ TEST(TensorTest, DivSafeMasksZero) {
   Tensor cpu = a.div(b, true);
   auto *cp = static_cast<float *>(cpu.data_ptr());
   EXPECT_FLOAT_EQ(cp[0], 0.0f);
-  EXPECT_FLOAT_EQ(cp[1], 1.0f);
+  EXPECT_FLOAT_EQ(cp[1], 2.0f);
   EXPECT_FLOAT_EQ(cp[2], 1.5f);
 #ifdef __APPLE__
   Tensor ma = a.to(Device::mps);
@@ -827,7 +912,7 @@ TEST(TensorTest, DivSafeMasksZero) {
   Tensor mc = ma.div(mb, true).to(Device::cpu);
   auto *mp = static_cast<float *>(mc.data_ptr());
   EXPECT_FLOAT_EQ(mp[0], 0.0f);
-  EXPECT_FLOAT_EQ(mp[1], 1.0f);
+  EXPECT_FLOAT_EQ(mp[1], 2.0f);
   EXPECT_FLOAT_EQ(mp[2], 1.5f);
 #endif
 }
@@ -844,8 +929,10 @@ TEST(TensorTest, DivSafeMasksZeroTruncatedShape) {
   }
   Tensor out = a.div(b, true);
   auto *op = static_cast<float *>(out.data_ptr());
+  // Regression: previously yielded {0,1,1.5} after encountering a zero
+  // denominator.
   EXPECT_FLOAT_EQ(op[0], 0.0f);
-  EXPECT_FLOAT_EQ(op[1], 1.0f);
+  EXPECT_FLOAT_EQ(op[1], 2.0f);
   EXPECT_FLOAT_EQ(op[2], 1.5f);
 }
 
@@ -862,7 +949,7 @@ TEST(TensorTest, DivSafeResetsOffsets) {
   Tensor out = a.div(b, true);
   auto *op = static_cast<float *>(out.data_ptr());
   EXPECT_FLOAT_EQ(op[0], 0.0f);
-  EXPECT_FLOAT_EQ(op[1], 1.0f);
+  EXPECT_FLOAT_EQ(op[1], 2.0f);
   EXPECT_FLOAT_EQ(op[2], 1.5f);
 }
 
@@ -993,6 +1080,68 @@ TEST(TensorTest, MeanAxisDim1) {
     EXPECT_FLOAT_EQ(mp[i], exp[i]);
     EXPECT_FLOAT_EQ(mkp[i], exp[i]);
   }
+}
+
+TEST(TensorTest, SumMeanAxisDim1) {
+  std::array<std::int64_t, 8> shape{2, 3, 4, 0, 0, 0, 0, 0};
+  Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
+  auto *ap = static_cast<float *>(a.data_ptr());
+  for (int i = 0; i < 24; ++i)
+    ap[i] = static_cast<float>(i + 1);
+  Tensor s = a.sum(1);
+  Tensor m = a.mean(1);
+  EXPECT_EQ(s.shape()[0], 2);
+  EXPECT_EQ(s.shape()[1], 4);
+  EXPECT_EQ(m.shape()[0], 2);
+  EXPECT_EQ(m.shape()[1], 4);
+  Tensor sk = a.sum(1, true);
+  Tensor mk = a.mean(1, true);
+  EXPECT_EQ(sk.shape()[0], 2);
+  EXPECT_EQ(sk.shape()[1], 1);
+  EXPECT_EQ(sk.shape()[2], 4);
+  EXPECT_EQ(mk.shape()[1], 1);
+  EXPECT_EQ(mk.shape()[2], 4);
+  auto *sp = static_cast<float *>(s.data_ptr());
+  auto *mp = static_cast<float *>(m.data_ptr());
+  auto *skp = static_cast<float *>(sk.data_ptr());
+  auto *mkp = static_cast<float *>(mk.data_ptr());
+  for (int i = 0; i < 2; ++i) {
+    for (int k = 0; k < 4; ++k) {
+      float rowSum = 0.0f;
+      for (int j = 0; j < 3; ++j)
+        rowSum += ap[i * 12 + j * 4 + k];
+      int idx = i * 4 + k;
+      EXPECT_FLOAT_EQ(sp[idx], rowSum);
+      EXPECT_FLOAT_EQ(mp[idx], rowSum / 3.0f);
+      EXPECT_FLOAT_EQ(skp[idx], rowSum);
+      EXPECT_FLOAT_EQ(mkp[idx], rowSum / 3.0f);
+    }
+  }
+#ifdef __APPLE__
+  Tensor ma = a.to(Device::mps);
+  Tensor ms = ma.sum(1).to(Device::cpu);
+  Tensor mm = ma.mean(1).to(Device::cpu);
+  Tensor msk = ma.sum(1, true).to(Device::cpu);
+  Tensor mmk = ma.mean(1, true).to(Device::cpu);
+  EXPECT_EQ(ms.shape()[0], 2);
+  EXPECT_EQ(ms.shape()[1], 4);
+  EXPECT_EQ(mm.shape()[0], 2);
+  EXPECT_EQ(mm.shape()[1], 4);
+  EXPECT_EQ(msk.shape()[1], 1);
+  EXPECT_EQ(msk.shape()[2], 4);
+  EXPECT_EQ(mmk.shape()[1], 1);
+  EXPECT_EQ(mmk.shape()[2], 4);
+  auto *msp = static_cast<float *>(ms.data_ptr());
+  auto *mmp = static_cast<float *>(mm.data_ptr());
+  auto *mskp = static_cast<float *>(msk.data_ptr());
+  auto *mmkp = static_cast<float *>(mmk.data_ptr());
+  for (int i = 0; i < 8; ++i) {
+    EXPECT_FLOAT_EQ(sp[i], msp[i]);
+    EXPECT_FLOAT_EQ(mp[i], mmp[i]);
+    EXPECT_FLOAT_EQ(skp[i], mskp[i]);
+    EXPECT_FLOAT_EQ(mkp[i], mmkp[i]);
+  }
+#endif
 }
 
 TEST(TensorTest, SumMeanAxisCpuMetal) {
@@ -1562,6 +1711,7 @@ TEST(TensorBroadcastTest, HigherRank) {
 TEST(TensorTest, ProfilingLogCreation) {
   orchard::tensor_profile_clear_log();
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
   std::array<std::int64_t, 8> shape{1, 1, 1, 1, 1, 1, 1, 1};
   {
     Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
@@ -1571,6 +1721,7 @@ TEST(TensorTest, ProfilingLogCreation) {
   std::ifstream off("/tmp/orchard_tensor_profile.log");
   EXPECT_FALSE(off.good());
   setenv("ORCHARD_TENSOR_PROFILE", "1", 1);
+  orchard::tensor_profile_reset();
   {
     Tensor t = Tensor::empty(shape, DType::f32, Device::cpu);
     (void)t;
@@ -1579,11 +1730,13 @@ TEST(TensorTest, ProfilingLogCreation) {
   std::ifstream ifs("/tmp/orchard_tensor_profile.log");
   EXPECT_TRUE(ifs.good());
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
 }
 
 TEST(TensorTest, ProfilingLogEntries) {
   orchard::tensor_profile_clear_log();
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
   std::array<std::int64_t, 8> shape{1, 1, 1, 1, 1, 1, 1, 1};
   {
     Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
@@ -1596,6 +1749,7 @@ TEST(TensorTest, ProfilingLogEntries) {
   std::ifstream pre("/tmp/orchard_tensor_profile.log");
   EXPECT_FALSE(pre.good());
   setenv("ORCHARD_TENSOR_PROFILE", "1", 1);
+  orchard::tensor_profile_reset();
   {
     Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
     Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
@@ -1605,6 +1759,7 @@ TEST(TensorTest, ProfilingLogEntries) {
   }
   dump_live_tensors();
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
 
   std::ifstream ifs("/tmp/orchard_tensor_profile.log");
   ASSERT_TRUE(ifs.good());

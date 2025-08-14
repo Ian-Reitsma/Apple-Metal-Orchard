@@ -13,11 +13,11 @@
 - Rank-eight shape representation with explicit stride control for advanced view and slice operations.
 - Intrusive reference counted `Storage` objects that permit zero-copy wrapping of external buffers through `Tensor::fromData`.
 - Host and device transfers mediated by `Tensor::to`, yielding zero-copy aliases when the destination `Device` matches the source.
-  - Allocation profiling managed by `metal/common/Profiling.h`. When `ORCHARD_TENSOR_PROFILE` is present in the environment, allocation and release events stream to `/tmp/orchard_tensor_profile.log`, and `dump_live_tensors` reports outstanding buffers. The flag is polled on each query so changes take effect immediately, and `tensor_profile_clear_log` removes stale log files.
+  - Allocation profiling managed by `metal/common/Profiling.h`. When `ORCHARD_TENSOR_PROFILE` is present in the environment, allocation and release events stream to `/tmp/orchard_tensor_profile.log`, and `dump_live_tensors` reports outstanding buffers. The flag is polled on each query so changes take effect immediately, `tensor_profile_reset` refreshes the state between tests, and `tensor_profile_clear_log` removes stale log files.
 - The Metal allocator falls back to host memory on non-Apple platforms while preserving allocation and free profiling logs.
   `runtime_cpu.cpp` implements this fallback and compiles when Objective-C++ sources are omitted.
 - Autograd foundations supplied by the `requires_grad` flag, gradient accumulation in `Tensor::grad`, and dedicated nodes for matmul, reductions, view, elementwise add and multiply, transpose, and division. `Tensor::detach` returns a view that shares storage but halts gradient propagation.
-- Autograd nodes snapshot inputs before in-place operations so backward uses pre-division values and gradients accumulate once; regression tests validate chained in-place scalar divisions and CPU add and mul backward paths.
+- Autograd nodes snapshot inputs before in-place operations so backward uses pre-division values and gradients accumulate once; regression tests cover single, repeated, and chained in-place `div_` sequences and CPU add and mul backward paths.
 - Initial Metal compute kernels, located under `metal-tensor/metal/kernels/`, implementing vector addition, matmul, whole-tensor reductions, and a dedicated mean kernel; each operation automatically falls back to CPU code when Metal execution is unavailable.
 - Constant filling through `Tensor::fill` sets every element to a value on both CPU and Metal devices.
 - `Tensor::div` checks denominators for zero and can mask them when a safe flag
@@ -31,7 +31,7 @@
 4. Non-Apple hosts follow the same steps. Metal discovery is skipped by the `CMAKE_SYSTEM_NAME` check, Objective-C++ sources are excluded, `runtime_cpu.cpp` drives the runtime, and only `liborchard_core.a` is produced while profiling events remain logged. Capture any diagnostics and see docs/tensor.md#toolchain for details.
 
 ## Testing
-Run `cmake --build build --target test` to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks, and autograd gradients. CPU-only builds exercise transpose, matmul, mean, and sum backward paths to validate gradients without Metal. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
+Run `cmake --build build --target test` to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks with matching alloc/free counts, and autograd gradients. CPU-only builds exercise transpose, matmul, mean, and sum backward paths to validate gradients without Metal. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
 
 ## Benchmarking
 Invoke `python benchmarks/run.py -o /tmp/bench` after building to capture kernel timings, hardware details, runtime flags, and whether Metal or CPU kernels executed. When `ORCHARD_TENSOR_PROFILE` is set the harness embeds allocator profiling lines from `/tmp/orchard_tensor_profile.log`, and setting `ORCHARD_FORCE_CPU=1` forces CPU-only runs. Results are written to `/tmp/bench/<commit>/benchmarks.json` where `<commit>` is the short Git hash. The harness exercises addition, multiplication, matmul, reduce_sum, mean, and transpose and enables reproducible comparisons across commits.
@@ -43,15 +43,15 @@ Tensors opt into gradient tracking through the requires_grad property. Operation
 The macOS workflow described in .github/workflows/macos.yml installs dependencies through Homebrew, configures the project with the Ninja generator, treats warnings as errors, and executes the full test suite. Build artifacts and ccache directories are cached to accelerate subsequent runs. Any warning or failing test causes the pipeline to halt.
 
 ## Profiling Guidance
-Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation events along with explicit dumps triggered by dump_live_tensors. The variable is checked on every call so toggling the flag takes effect immediately. Logs accumulate at /tmp/orchard_tensor_profile.log for offline inspection and may be cleared with tensor_profile_clear_log.
+Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation events along with explicit dumps triggered by dump_live_tensors. The variable is checked on every call so toggling the flag takes effect immediately, tensor_profile_reset clears any residual state for subsequent tests, and logs accumulate at /tmp/orchard_tensor_profile.log for offline inspection that tensor_profile_clear_log can remove.
 
 ## Current Status
 - Tensor v0 handles intrusive storage, host and device transfers, elementwise division with zero masking, constant filling, explicit detachment, and validated gradients for matmul, reductions, view, elementwise addition and multiply, division, and transpose.
-- Safe division resets broadcast offsets after zero denominators so CPU and Metal results match.
+ - Safe division masks zero denominators per element so CPU and Metal results match.
 - Sum and mean recompute output shapes and strides after axis reductions so CPU results stay aligned.
-- Transpose backward routes gradients through CPU kernels for host tensors and dispatches Metal kernels otherwise.
-- Profiling reads `ORCHARD_TENSOR_PROFILE` on each query and emits symmetric `alloc` and `free` pairs even when memory is pooled.
-- CPU-only builds run autograd regressions for transpose, matmul, mean, and sum so gradients remain validated without Metal kernels.
+- Transpose backward routes gradients through CPU kernels for host tensors and dispatches Metal kernels otherwise, forwarding the transposed gradient to upstream nodes.
+- Profiling reads `ORCHARD_TENSOR_PROFILE` on each query and emits symmetric `alloc` and `free` pairs even when memory is pooled; `tensor_profile_reset` forces the flag to refresh between runs and a stress test confirms counts stay balanced.
+- CPU-only builds run autograd regressions for transpose, matmul, mean, and sum so gradients remain validated without Metal kernels, expanding coverage beyond division.
 - The PyTorch bridge under `experimental/` remains available for regression checks but is omitted from standard builds.
 - macOS continuous integration enforces warnings-as-errors and executes the test suite; Linux hosts provide diagnostic failures only.
 - Fused FlashAttention backward kernels with dropout are present under `experimental/` and enable end-to-end gradient checks for keys and values.

@@ -12,7 +12,9 @@ inline bool tensor_profile_enabled() {
   return std::getenv("ORCHARD_TENSOR_PROFILE") != nullptr;
 }
 
-inline void tensor_profile_reset() {}
+inline void tensor_profile_reset() {
+  // Environment is queried on every call, leaving no cached state.
+}
 
 inline void tensor_profile_clear_log() {
   std::remove("/tmp/orchard_tensor_profile.log");
