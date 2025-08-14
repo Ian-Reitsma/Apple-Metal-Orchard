@@ -14,15 +14,18 @@ This document captures the current state of the Orchard effort and the path forw
   - intrusive ref-counted storage with zero-copy Tensor::fromData for wrapping external memory
   - CPU and Metal transfers through Tensor::to with runtime helpers for blit operations
     - allocation profiling and dump_live_tensors for debug tracing
-    - tests for contiguity, CPU adds, command-queue pooling, reductions, elementwise division, filling, detachment, and profiling logs
+      - tests for contiguity, CPU adds, command-queue pooling, reductions, elementwise division, filling, detachment, and profiling logs that can be toggled at runtime via `tensor_profile_reset`
+      - each storage creation logs a single `alloc` entry and the final release logs a matching `free` entry to track allocator symmetry under load
     - helper Tensor::is_alias_of with tests mutating detached views and clone-before-detach paths to verify storage aliasing
     - seeded autograd and validated gradients for elementwise add, divide, matmul, mean, reductions, and view transforms across CPU and Metal
     - division gradients dispatch by device allowing CPU-only builds without Metal
     - the Metal allocator falls back to CPU memory on non-Apple hosts while still logging profiling events
-    - autograd nodes retain inputs to avoid recursive gradient application with tests covering chained in-place scalar divisions and CPU add and mul backward paths
-    - vector and matrix broadcast tests now align shapes to prevent prior crashes
-    - the test suite currently reports failures for `TensorTest.DivSafeMasksZero`, `TensorTest.SumMeanAxisCpuMetal`, `TensorTest.ProfilingLogCreation`, `TensorTest.ProfilingLogEntries`, `TensorAutogradTest.DivScalarInplaceChainBackward`, `TensorAutogradTest.TransposeBackward`, and `ProfilingStressTest.AllocationAndQueuePooling`
-  - macOS continuous integration caches builds, treats warnings as errors, and runs the test suite on every pull request.
+      - autograd nodes snapshot pre-mutation values to avoid recursive gradient application with tests covering chained and repeated in-place scalar divisions and CPU add and mul backward paths
+      - vector and matrix broadcast tests now align shapes to prevent prior crashes
+      - safe division masks zeros with broadcast-aware strides so CPU and Metal results match
+      - sum and mean shift stride metadata when dimensions drop to keep source offsets correct
+      - profiling reads `ORCHARD_TENSOR_PROFILE` on each query and pairs every `alloc` with a matching `free`
+    - macOS continuous integration caches builds, treats warnings as errors, and runs the test suite on every pull request.
 - Implementation requires macOS with Xcode 15+ and the Metal 4 SDK. The project does not build in this Linux environment, but agents must still attempt configuration and report failures.
 - A minimal copy of GoogleTest resides under `third_party/googletest` so tests compile without downloads; upstream tests and samples were dropped to reduce repository size.
 
@@ -32,7 +35,7 @@ This document captures the current state of the Orchard effort and the path forw
 3. Replace remaining CPU fallbacks with optimised Metal kernels.
 4. Fix CMake configuration on non-Apple platforms so CPU-only builds and tests succeed without Objective-C++.
 5. Keep macOS CI green and broaden the matrix as needed.
-6. Resolve outstanding test failures for safe division masks, sum and mean parity on CPU and Metal, profiling log creation and entries, in-place scalar division backward, transpose backward, and allocation and queue pooling stress cases.
+ 6. Broaden the test matrix with additional stress cases and CPU-only execution paths.
 7. Benchmark FlashAttention and core tensor ops and publish performance data.
 
 ## Milestones

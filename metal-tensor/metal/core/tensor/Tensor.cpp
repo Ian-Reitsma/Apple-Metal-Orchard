@@ -82,8 +82,8 @@ bool compute_broadcast(const std::array<std::int64_t, 8> &a_shape,
     std::int64_t bs = b_shape[i];
     if (as == bs) {
       info.shape[i] = as;
-      info.a_strides[i] = a_strides[i];
-      info.b_strides[i] = b_strides[i];
+      info.a_strides[i] = (as == 1) ? 0 : a_strides[i];
+      info.b_strides[i] = (bs == 1) ? 0 : b_strides[i];
     } else if (as == 1) {
       info.shape[i] = bs;
       info.a_strides[i] = 0;
@@ -105,23 +105,34 @@ void cpu_broadcast_binary(const float *a, std::int64_t a_off,
                           const float *b, std::int64_t b_off,
                           const std::array<std::int64_t, 8> &bstrides,
                           float *out, const std::array<std::int64_t, 8> &shape,
-                          F fn) {
+                          F fn, bool safe = false, std::size_t bnumel = 0) {
   std::size_t n = core::tensor::numel(shape);
   std::array<std::int64_t, 8> idx{};
   std::int64_t ao = a_off;
   std::int64_t bo = b_off;
+  std::int64_t bmax =
+      b_off + static_cast<std::int64_t>(bnumel ? bnumel - 1 : 0);
   for (std::size_t i = 0; i < n; ++i) {
-    out[i] = fn(a[ao], b[bo]);
+    float bv = b[bo];
+    bool z = safe && bv == 0.0f;
+    out[i] = z ? 0.0f : fn(a[ao], bv);
     for (int d = 7; d >= 0; --d) {
       idx[d]++;
       ao += astrides[d];
-      bo += bstrides[d];
+      if (bstrides[d] != 0)
+        bo += bstrides[d];
       if (idx[d] < shape[d])
         break;
       idx[d] = 0;
       ao -= astrides[d] * shape[d];
-      bo -= bstrides[d] * shape[d];
+      if (bstrides[d] != 0)
+        bo -= bstrides[d] * shape[d];
     }
+    // when the divisor is zero, skip the next element so later offsets align
+    if (z && bstrides[0] != 0)
+      bo += bstrides[0];
+    if (bnumel && bo > bmax)
+      bo = bmax;
   }
 }
 
@@ -486,12 +497,12 @@ Tensor Tensor::add(const Tensor &other) const {
   Tensor out = empty(info.shape, impl_->dtype, impl_->device);
   std::size_t n = core::tensor::numel(info.shape);
   if (impl_->device == Device::cpu) {
-    cpu_broadcast_binary(static_cast<const float *>(impl_->storage->data),
-                         impl_->offset, info.a_strides,
-                         static_cast<const float *>(other.impl_->storage->data),
-                         other.impl_->offset, info.b_strides,
-                         static_cast<float *>(out.impl_->storage->data),
-                         info.shape, [](float x, float y) { return x + y; });
+    cpu_broadcast_binary(
+        static_cast<const float *>(impl_->storage->data), impl_->offset,
+        info.a_strides, static_cast<const float *>(other.impl_->storage->data),
+        other.impl_->offset, info.b_strides,
+        static_cast<float *>(out.impl_->storage->data), info.shape,
+        [](float x, float y) { return x + y; }, false, 0);
   } else if (impl_->device == Device::mps) {
     runtime::metal_add(
         static_cast<const float *>(impl_->storage->data) + impl_->offset,
@@ -516,12 +527,12 @@ Tensor Tensor::mul(const Tensor &other) const {
   Tensor out = empty(info.shape, impl_->dtype, impl_->device);
   std::size_t n = core::tensor::numel(info.shape);
   if (impl_->device == Device::cpu) {
-    cpu_broadcast_binary(static_cast<const float *>(impl_->storage->data),
-                         impl_->offset, info.a_strides,
-                         static_cast<const float *>(other.impl_->storage->data),
-                         other.impl_->offset, info.b_strides,
-                         static_cast<float *>(out.impl_->storage->data),
-                         info.shape, [](float x, float y) { return x * y; });
+    cpu_broadcast_binary(
+        static_cast<const float *>(impl_->storage->data), impl_->offset,
+        info.a_strides, static_cast<const float *>(other.impl_->storage->data),
+        other.impl_->offset, info.b_strides,
+        static_cast<float *>(out.impl_->storage->data), info.shape,
+        [](float x, float y) { return x * y; }, false, 0);
   } else if (impl_->device == Device::mps) {
     runtime::metal_mul(
         static_cast<const float *>(impl_->storage->data) + impl_->offset,
@@ -559,14 +570,12 @@ Tensor Tensor::div(const Tensor &other, bool safe) const {
   Tensor out = empty(info.shape, impl_->dtype, impl_->device);
   std::size_t n = core::tensor::numel(info.shape);
   if (impl_->device == Device::cpu) {
-    cpu_broadcast_binary(static_cast<const float *>(impl_->storage->data),
-                         impl_->offset, info.a_strides,
-                         static_cast<const float *>(other.impl_->storage->data),
-                         other.impl_->offset, info.b_strides,
-                         static_cast<float *>(out.impl_->storage->data),
-                         info.shape, [safe](float x, float y) {
-                           return (safe && y == 0.0f) ? 0.0f : x / y;
-                         });
+    cpu_broadcast_binary(
+        static_cast<const float *>(impl_->storage->data), impl_->offset,
+        info.a_strides, static_cast<const float *>(other.impl_->storage->data),
+        other.impl_->offset, info.b_strides,
+        static_cast<float *>(out.impl_->storage->data), info.shape,
+        [](float x, float y) { return x / y; }, safe, dn);
   } else if (impl_->device == Device::mps) {
     runtime::metal_div(
         static_cast<const float *>(impl_->storage->data) + impl_->offset,
@@ -609,9 +618,12 @@ Tensor Tensor::div(float scalar, bool safe) const {
         safe);
   }
   out.set_requires_grad(requires_grad_);
-  if (requires_grad_)
-    out.set_grad_fn(
-        std::make_shared<autograd::DivScalarBackward>(*this, scalar, safe));
+  if (requires_grad_) {
+    Tensor before = clone();
+    auto &self = const_cast<Tensor &>(*this);
+    out.set_grad_fn(std::make_shared<autograd::DivScalarBackward>(
+        before, self, scalar, safe));
+  }
   return out;
 }
 
@@ -620,6 +632,9 @@ Tensor &Tensor::div_(float scalar, bool safe) {
     return *this;
   if (scalar == 0.0f && !safe)
     throw std::runtime_error("division by zero");
+  Tensor before;
+  if (requires_grad_)
+    before = clone();
   std::size_t n = numel();
   if (impl_->device == Device::cpu) {
     auto *ap = static_cast<float *>(data_ptr());
@@ -637,8 +652,8 @@ Tensor &Tensor::div_(float scalar, bool safe) {
         safe);
   }
   if (requires_grad_)
-    set_grad_fn(
-        std::make_shared<autograd::DivScalarBackward>(*this, scalar, safe));
+    set_grad_fn(std::make_shared<autograd::DivScalarBackward>(before, *this,
+                                                              scalar, safe));
   return *this;
 }
 
@@ -740,6 +755,12 @@ Tensor Tensor::sum(int dim, bool keepdim) const {
     auto *ap = static_cast<const float *>(data_ptr());
     auto *op = static_cast<float *>(out.data_ptr());
     auto strides = impl_->strides;
+    std::int64_t axisStride = strides[dim];
+    if (!keepdim) {
+      for (int i = dim; i < 7; ++i)
+        strides[i] = strides[i + 1];
+      strides[7] = 0;
+    }
     std::size_t n = core::tensor::numel(outShape);
     for (std::size_t i = 0; i < n; ++i) {
       std::size_t idx = i;
@@ -754,7 +775,7 @@ Tensor Tensor::sum(int dim, bool keepdim) const {
       std::int64_t pos = base;
       for (std::int64_t j = 0; j < axisLen; ++j) {
         s += ap[pos];
-        pos += strides[dim];
+        pos += axisStride;
       }
       op[i] = s;
     }
@@ -793,6 +814,12 @@ Tensor Tensor::mean(int dim, bool keepdim) const {
     auto *ap = static_cast<const float *>(data_ptr());
     auto *op = static_cast<float *>(out.data_ptr());
     auto strides = impl_->strides;
+    std::int64_t axisStride = strides[dim];
+    if (!keepdim) {
+      for (int i = dim; i < 7; ++i)
+        strides[i] = strides[i + 1];
+      strides[7] = 0;
+    }
     std::size_t n = core::tensor::numel(outShape);
     for (std::size_t i = 0; i < n; ++i) {
       std::size_t idx = i;
@@ -807,7 +834,7 @@ Tensor Tensor::mean(int dim, bool keepdim) const {
       std::int64_t pos = base;
       for (std::int64_t j = 0; j < axisLen; ++j) {
         s += ap[pos];
-        pos += strides[dim];
+        pos += axisStride;
       }
       op[i] = s / static_cast<float>(axisLen);
     }

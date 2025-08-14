@@ -10,7 +10,8 @@ struct DivScalarBackward : Node {
   tensor::Tensor *pa;
   float scalar;
   bool safe{false};
-  DivScalarBackward(const tensor::Tensor &aa, float s, bool sf);
+  DivScalarBackward(tensor::Tensor before, tensor::Tensor &after, float s,
+                    bool sf);
   void apply(tensor::Tensor &g) override;
 };
 
