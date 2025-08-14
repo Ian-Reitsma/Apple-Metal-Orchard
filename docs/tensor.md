@@ -59,7 +59,7 @@ Building requires Apple's command line tools and the Metal SDK.
 
 ## Allocation Profiling
 
-Set `ORCHARD_TENSOR_PROFILE` to one to log tensor storage allocations and frees to `/tmp/orchard_tensor_profile.log`. The log records alloc, free, and live events with storage labels and sizes. Call `dump_live_tensors` at any point to append all currently live allocations to the log. Include `core/tensor/Debug.h` and invoke `dump_live_tensors`. Change `ORCHARD_TENSOR_PROFILE` at runtime and call `tensor_profile_reset` to refresh the cached state.
+Set `ORCHARD_TENSOR_PROFILE` to one to log tensor storage allocations and frees to `/tmp/orchard_tensor_profile.log`. The log records alloc, free, and live events with storage labels and sizes. Call `dump_live_tensors` at any point to append all currently live allocations to the log. Include `core/tensor/Debug.h` and invoke `dump_live_tensors`. Change `ORCHARD_TENSOR_PROFILE` at runtime and the flag is rechecked on each query.
 
 ## Constant Filling
 
