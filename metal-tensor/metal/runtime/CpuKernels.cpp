@@ -22,12 +22,14 @@ void metal_add(const float *a, const float *b, float *c,
     for (int d = 7; d >= 0; --d) {
       idx[d]++;
       ao += as[d];
-      bo += bs[d];
+      if (bs[d] != 0)
+        bo += bs[d];
       if (idx[d] < shp[d])
         break;
       idx[d] = 0;
       ao -= as[d] * shp[d];
-      bo -= bs[d] * shp[d];
+      if (bs[d] != 0)
+        bo -= bs[d] * shp[d];
     }
   }
 }
@@ -60,12 +62,14 @@ void metal_mul(const float *a, const float *b, float *c,
     for (int d = 7; d >= 0; --d) {
       idx[d]++;
       ao += as[d];
-      bo += bs[d];
+      if (bs[d] != 0)
+        bo += bs[d];
       if (idx[d] < shp[d])
         break;
       idx[d] = 0;
       ao -= as[d] * shp[d];
-      bo -= bs[d] * shp[d];
+      if (bs[d] != 0)
+        bo -= bs[d] * shp[d];
     }
   }
 }
@@ -88,12 +92,14 @@ void metal_div(const float *a, const float *b, float *c,
     for (int d = 7; d >= 0; --d) {
       idx[d]++;
       ao += as[d];
-      bo += bs[d];
+      if (bs[d] != 0)
+        bo += bs[d];
       if (idx[d] < shp[d])
         break;
       idx[d] = 0;
       ao -= as[d] * shp[d];
-      bo -= bs[d] * shp[d];
+      if (bs[d] != 0)
+        bo -= bs[d] * shp[d];
     }
   }
 }

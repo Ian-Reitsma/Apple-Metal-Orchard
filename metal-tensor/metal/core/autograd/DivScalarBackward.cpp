@@ -4,8 +4,9 @@ using namespace orchard::core::tensor;
 
 namespace orchard::core::autograd {
 
-DivScalarBackward::DivScalarBackward(const Tensor &aa, float s, bool sf)
-    : a(aa), pa(const_cast<Tensor *>(&aa)), scalar(s), safe(sf) {}
+DivScalarBackward::DivScalarBackward(tensor::Tensor before,
+                                     tensor::Tensor &after, float s, bool sf)
+    : a(std::move(before)), pa(&after), scalar(s), safe(sf) {}
 
 void DivScalarBackward::apply(Tensor &g) {
   Tensor gg = g.to(Device::cpu);

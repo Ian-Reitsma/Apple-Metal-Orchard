@@ -77,12 +77,12 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - Continuous integration now covers `macos-13` (M1) and `macos-14` (M2) with Xcode 15.3 pinned and Homebrew updates disabled. A Linux job installs a clang-based Objective-C++ toolchain and is allowed to fail for diagnostics.
 - Documentation outlines tensor internals, profiling hooks, and contributor expectations yet remains a living reference.
 - GoogleTest ships as a minimal vendored copy under `third_party/googletest` so tests compile without network access; obtain upstream tests and samples from the official repository when needed.
-- The suite currently reports failures for `TensorTest.DivSafeMasksZero`,
-  `TensorTest.SumMeanAxisCpuMetal`, `TensorTest.ProfilingLogCreation`,
-  `TensorTest.ProfilingLogEntries`,
-  `TensorAutogradTest.DivScalarInplaceChainBackward`,
-  `TensorAutogradTest.TransposeBackward`, and
-  `ProfilingStressTest.AllocationAndQueuePooling`.
+  - Safe division masks zeros with correct broadcast stride handling so CPU and
+    Metal results align.
+  - Sum and mean shift stride metadata after dropping dimensions, producing
+    accurate offsets when `keepdim` is false.
+  - Profiling reads `ORCHARD_TENSOR_PROFILE` on every query and pairs each
+    `alloc` with a matching `free` entry even under load.
 
 ## Milestones
 1. Phase out the PyTorch bridge once Tensor v0 covers FlashAttention and essential autograd features.
@@ -96,4 +96,4 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 3. Replace remaining CPU fallbacks with tuned Metal kernels and delete redundant host code.
 4. Grow the test matrix to cover multi-device transfers, profiling scenarios, and stress conditions.
 5. Stand up a benchmarking harness that records hardware, runtime flags, and kernel timing for every commit while archiving JSON outputs per commit.
-6. Resolve the failing tests cited above and expand coverage for CPU-only execution paths.
+6. Broaden the test matrix for additional CPU-only execution paths and stress scenarios.

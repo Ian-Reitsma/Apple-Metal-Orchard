@@ -60,7 +60,7 @@ struct Storage {
       live_storages.push_back(st);
     }
     std::ostringstream oss;
-    oss << "alloc " << st->label << ' ' << bytes;
+    oss << "alloc " << st->label << ' ' << bytes << ' ' << st->data;
     orchard::tensor_profile_log(oss.str());
     return st;
   }
@@ -83,7 +83,7 @@ struct Storage {
       live_storages.push_back(st);
     }
     std::ostringstream oss;
-    oss << "alloc " << st->label << ' ' << bytes;
+    oss << "alloc " << st->label << ' ' << bytes << ' ' << st->data;
     orchard::tensor_profile_log(oss.str());
     return st;
   }
@@ -91,7 +91,9 @@ struct Storage {
   void retain() { refcount.fetch_add(1, std::memory_order_relaxed); }
   void release() {
     if (refcount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-      orchard::tensor_profile_log("free " + label);
+      std::ostringstream oss;
+      oss << "free " << label << ' ' << data;
+      orchard::tensor_profile_log(oss.str());
       if (allocator)
         allocator->deallocate(data);
       else if (deleter)

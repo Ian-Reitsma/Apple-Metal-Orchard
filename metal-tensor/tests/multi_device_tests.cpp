@@ -9,6 +9,7 @@
 #include <thread>
 #include <vector>
 
+#include "common/Profiling.h"
 #include "core/tensor/Debug.h"
 #include "core/tensor/Tensor.h"
 #include "runtime/MetalContext.h"
@@ -81,7 +82,10 @@ TEST(MultiDeviceTransferTest, NonContiguousZeroCopyAndAlignment) {
 
 TEST(ProfilingStressTest, AllocationAndQueuePooling) {
   std::remove("/tmp/orchard_tensor_profile.log");
+  unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
   setenv("ORCHARD_TENSOR_PROFILE", "1", 1);
+  orchard::tensor_profile_reset();
   std::array<std::int64_t, 8> shape{1024 * 1024, 1, 1, 1, 1, 1, 1, 1};
   const int threads = 4;
   std::atomic<bool> ok{true};
@@ -111,6 +115,7 @@ TEST(ProfilingStressTest, AllocationAndQueuePooling) {
     w.join();
   dump_live_tensors();
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
   std::ifstream ifs("/tmp/orchard_tensor_profile.log");
   EXPECT_TRUE(ifs.good());
   std::size_t allocs = 0, frees = 0;
@@ -128,6 +133,7 @@ TEST(ProfilingStressTest, AllocationAndQueuePooling) {
 TEST(ProfilingStressTest, NoLoggingWhenUnset) {
   std::remove("/tmp/orchard_tensor_profile.log");
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
   std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
   Tensor cpu = Tensor::empty(shape, DType::f32, Device::cpu);
 #ifdef __APPLE__
