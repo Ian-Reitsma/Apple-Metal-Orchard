@@ -16,7 +16,7 @@ endif()
 
 add_executable(metal_tensor_tests tensor_tests.cpp multi_device_tests.cpp)
 
-target_link_libraries(metal_tensor_tests PRIVATE ${GTEST_LIB} orchard_core orchard_metal)
+target_link_libraries(metal_tensor_tests PRIVATE ${GTEST_LIB} orchard_metal)
 
 target_compile_features(metal_tensor_tests PRIVATE cxx_std_20)
 
