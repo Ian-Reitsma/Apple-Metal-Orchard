@@ -15,7 +15,9 @@ add_library(orchard_core STATIC
 )
 
 target_include_directories(orchard_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/metal)
-target_link_libraries(orchard_core PUBLIC uuid)
+if(NOT APPLE)
+  target_link_libraries(orchard_core PUBLIC uuid)
+endif()
 
 add_library(orchard_metal STATIC)
 
@@ -35,7 +37,7 @@ else()
 endif()
 
 target_include_directories(orchard_metal PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/metal)
-target_link_libraries(orchard_metal PUBLIC orchard_core)
+target_link_libraries(orchard_metal PRIVATE orchard_core)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
