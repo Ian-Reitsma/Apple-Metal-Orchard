@@ -4,8 +4,15 @@
 #include <cstddef>
 #ifdef __APPLE__
 #include <os/lock.h>
+struct UnfairLock {
+  os_unfair_lock l = OS_UNFAIR_LOCK_INIT;
+  void lock() { os_unfair_lock_lock(&l); }
+  void unlock() { os_unfair_lock_unlock(&l); }
+};
+using TensorLock = UnfairLock;
 #else
 #include <mutex>
+using TensorLock = std::mutex;
 #endif
 
 #include "Storage.h"
@@ -19,11 +26,7 @@ struct TensorImpl {
   DType dtype{DType::f32};
   Device device{Device::cpu};
   std::int64_t offset{0};
-#ifdef __APPLE__
-  os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
-#else
-  std::mutex lock;
-#endif
+  TensorLock lock;
   void *grad_fn{nullptr};
   void *grad_ctx{nullptr};
 

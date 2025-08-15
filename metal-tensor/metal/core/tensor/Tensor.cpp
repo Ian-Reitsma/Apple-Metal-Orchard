@@ -136,7 +136,7 @@ Tensor::Tensor(const Tensor &other) {
   if (other.impl_) {
     impl_ = new TensorImpl(*other.impl_);
     if (impl_->storage) {
-      std::lock_guard guard(other.impl_->lock);
+      std::lock_guard<TensorLock> guard(other.impl_->lock);
       impl_->storage->retain();
     }
   }
@@ -151,7 +151,7 @@ Tensor &Tensor::operator=(const Tensor &other) {
     return *this;
   if (impl_) {
     if (impl_->storage) {
-      std::lock_guard guard(impl_->lock);
+      std::lock_guard<TensorLock> guard(impl_->lock);
       impl_->storage->release();
     }
     delete impl_;
@@ -160,7 +160,7 @@ Tensor &Tensor::operator=(const Tensor &other) {
   if (other.impl_) {
     impl_ = new TensorImpl(*other.impl_);
     if (impl_->storage) {
-      std::lock_guard guard(other.impl_->lock);
+      std::lock_guard<TensorLock> guard(other.impl_->lock);
       impl_->storage->retain();
     }
   }
@@ -185,7 +185,7 @@ Tensor::Tensor(Tensor &&other) noexcept
 Tensor &Tensor::operator=(Tensor &&other) noexcept {
   if (this != &other) {
     if (impl_ && impl_->storage) {
-      std::lock_guard guard(impl_->lock);
+      std::lock_guard<TensorLock> guard(impl_->lock);
       impl_->storage->release();
       delete impl_;
     }
@@ -204,7 +204,7 @@ Tensor &Tensor::operator=(Tensor &&other) noexcept {
 Tensor::~Tensor() {
   if (impl_) {
     if (impl_->storage) {
-      std::lock_guard guard(impl_->lock);
+      std::lock_guard<TensorLock> guard(impl_->lock);
       impl_->storage->release();
     }
     delete impl_;
@@ -273,7 +273,7 @@ Tensor Tensor::view(const std::array<std::int64_t, 8> &newShape) const {
     return Tensor{};
   auto *impl = new TensorImpl{};
   {
-    std::lock_guard guard(this->impl_->lock);
+    std::lock_guard<TensorLock> guard(this->impl_->lock);
     this->impl_->storage->retain();
   }
   impl->storage = this->impl_->storage;
@@ -300,7 +300,7 @@ Tensor Tensor::transpose(int dim0, int dim1) const {
     return Tensor{};
   auto *impl = new TensorImpl{};
   {
-    std::lock_guard guard(this->impl_->lock);
+    std::lock_guard<TensorLock> guard(this->impl_->lock);
     this->impl_->storage->retain();
   }
   impl->storage = this->impl_->storage;
@@ -339,7 +339,7 @@ Tensor Tensor::slice(int dim, int start, int end, int step) const {
 
   auto *impl = new TensorImpl{};
   {
-    std::lock_guard guard(this->impl_->lock);
+    std::lock_guard<TensorLock> guard(this->impl_->lock);
     this->impl_->storage->retain();
   }
   impl->storage = this->impl_->storage;
@@ -360,7 +360,7 @@ Tensor Tensor::to(Device dev) const {
   if (dev == impl_->device) {
     auto *impl = new TensorImpl{};
     {
-      std::lock_guard guard(this->impl_->lock);
+      std::lock_guard<TensorLock> guard(this->impl_->lock);
       this->impl_->storage->retain();
     }
     impl->storage = this->impl_->storage;
@@ -418,7 +418,7 @@ Tensor Tensor::contiguous() const {
   if (is_contiguous()) {
     auto *impl = new TensorImpl{};
     {
-      std::lock_guard guard(this->impl_->lock);
+      std::lock_guard<TensorLock> guard(this->impl_->lock);
       this->impl_->storage->retain();
     }
     impl->storage = this->impl_->storage;

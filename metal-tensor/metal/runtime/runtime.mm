@@ -43,7 +43,11 @@ void metal_copy_buffers(void *dstBuf, void *srcBuf, std::size_t bytes) {
   id<MTLBlitCommandEncoder> blit = ctx.acquire_blit_encoder(queue, cmd);
   id<MTLBuffer> dst = (__bridge id<MTLBuffer>)dstBuf;
   id<MTLBuffer> src = (__bridge id<MTLBuffer>)srcBuf;
-  [blit copyFromBuffer:src sourceOffset:0 toBuffer:dst destOffset:0 size:bytes];
+  [blit copyFromBuffer:src
+           sourceOffset:0
+               toBuffer:dst
+      destinationOffset:0
+                   size:bytes];
   [blit endEncoding];
   [cmd commit];
   [cmd waitUntilCompleted];
@@ -60,7 +64,11 @@ void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
   id<MTLCommandQueue> queue = nil;
   id<MTLCommandBuffer> cmd = nil;
   id<MTLBlitCommandEncoder> blit = ctx.acquire_blit_encoder(queue, cmd);
-  [blit copyFromBuffer:tmp sourceOffset:0 toBuffer:dst destOffset:0 size:bytes];
+  [blit copyFromBuffer:tmp
+           sourceOffset:0
+               toBuffer:dst
+      destinationOffset:0
+                   size:bytes];
   [blit endEncoding];
   [cmd commit];
   [cmd waitUntilCompleted];
@@ -79,7 +87,11 @@ void metal_copy_metal_to_cpu(void *dst, void *srcBuf, std::size_t bytes) {
   id<MTLCommandQueue> queue = nil;
   id<MTLCommandBuffer> cmd = nil;
   id<MTLBlitCommandEncoder> blit = ctx.acquire_blit_encoder(queue, cmd);
-  [blit copyFromBuffer:src sourceOffset:0 toBuffer:tmp destOffset:0 size:bytes];
+  [blit copyFromBuffer:src
+           sourceOffset:0
+               toBuffer:tmp
+      destinationOffset:0
+                   size:bytes];
   [blit endEncoding];
   [cmd commit];
   [cmd waitUntilCompleted];
