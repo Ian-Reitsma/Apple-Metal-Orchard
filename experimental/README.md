@@ -34,7 +34,7 @@ These components remain only for historical comparison. They will be removed onc
 
 ## Contributor Protocol
 - Follow `../AGENTS.md` for all repository rules even when working in this experimental subtree.
-- Configure and test the project with `cmake -S . -B build -G Ninja` and `cmake --build build --target test`; include any failures in pull requests.
+- Configure and test the project with `cmake -S . -B build -G Ninja` and `cmake --build build --target check`; include any failures in pull requests.
 - Pass `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` when configuring without network access so tests link against the trimmed `third_party/googletest` tree or a system package.
 - Use `rg` for code searches; avoid recursive `ls` or `grep` commands.
 - Do not commit datasets, run outputs, or other generated files. The `data/` and `runs/` directories remain untracked to keep large artifacts out of version control.

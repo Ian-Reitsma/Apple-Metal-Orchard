@@ -40,7 +40,7 @@
 3. Non-Apple hosts follow the same steps and produce only `liborchard_core.a`; include any diagnostic output in pull requests.
 
 ## Testing
-Invoke the tests with `cmake --build build --target test`. The suite covers contiguity, CPU arithmetic, safe division masking, sum and mean parity on CPU and Metal, command-queue pooling, multi-device CPU↔Metal↔CPU transfers, mixed CPU→Metal→CPU→Metal sequences, multi-threaded large tensor moves, profiling log validation with matching alloc/free counts, silent behaviour when `ORCHARD_TENSOR_PROFILE` is unset, alignment and zero-copy checks, and autograd gradients for elementwise add, multiply, and transpose.
+Invoke the tests with `cmake --build build --target check`. The suite covers contiguity, CPU arithmetic, safe division masking, sum and mean parity on CPU and Metal, command-queue pooling, multi-device CPU↔Metal↔CPU transfers, mixed CPU→Metal→CPU→Metal sequences, multi-threaded large tensor moves, profiling log validation with matching alloc/free counts, silent behaviour when `ORCHARD_TENSOR_PROFILE` is unset, alignment and zero-copy checks, and autograd gradients for elementwise add, multiply, and transpose.
 CPU-only configurations also run transpose, matmul, mean, and sum backward tests so gradients remain verified without Metal.
 
 ## Milestones
@@ -55,7 +55,7 @@ CPU-only configurations also run transpose, matmul, mean, and sum backward tests
 
 ## Contributor Protocol
 - Study `../AGENTS.md` before changing any source, test, or documentation file; it governs every operation in this repository.
-- Run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root prior to committing, and capture any failure output.
+- Run `cmake -S . -B build -G Ninja` and `cmake --build build --target check` from the repository root prior to committing, and capture any failure output.
 - When profiling tests modify `ORCHARD_TENSOR_PROFILE`, call `tensor_profile_reset` after each change and remove stale logs with `tensor_profile_clear_log`.
 - Use `rg` to search for symbols; avoid recursive `ls` or `grep` invocations.
 - Format C++20 and Objective-C++ code with `clang-format` and keep lines concise.

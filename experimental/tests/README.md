@@ -12,7 +12,7 @@ Expand or retire these tests as the Metal-native stack reaches parity and the ex
 
 ## Contributor Protocol
 - Refer to `../../AGENTS.md` for project-wide procedures on building, testing, and committing.
-- Before modifying tests, run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root, capturing all output.
+- Before modifying tests, run `cmake -S . -B build -G Ninja` and `cmake --build build --target check` from the repository root, capturing all output.
 - Set `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` during configuration when offline so the suite links against the trimmed `third_party/googletest` tree or a system package without downloading.
 - Use `rg` for repository searches; avoid recursive directory scans with `ls -R` or `grep -R`.
 - Do not check in test artifacts or datasets; keep large files under untracked directories.
