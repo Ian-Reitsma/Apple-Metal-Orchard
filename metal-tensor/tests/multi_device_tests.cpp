@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "common/Profiling.h"
@@ -83,7 +84,9 @@ TEST(MultiDeviceTransferTest, NonContiguousZeroCopyAndAlignment) {
 TEST(ProfilingStressTest, AllocationAndQueuePooling) {
   orchard::tensor_profile_clear_log();
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
   setenv("ORCHARD_TENSOR_PROFILE", "1", 1);
+  orchard::tensor_profile_reset();
   std::array<std::int64_t, 8> shape{1024 * 1024, 1, 1, 1, 1, 1, 1, 1};
   const int threads = 4;
   std::atomic<bool> ok{true};
@@ -113,24 +116,35 @@ TEST(ProfilingStressTest, AllocationAndQueuePooling) {
     w.join();
   dump_live_tensors();
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
   std::ifstream ifs("/tmp/orchard_tensor_profile.log");
   EXPECT_TRUE(ifs.good());
   std::size_t allocs = 0, frees = 0;
+  std::unordered_map<std::string, int> balance;
   for (std::string line; std::getline(ifs, line);) {
-    if (line.find("alloc") != std::string::npos)
+    std::istringstream iss(line);
+    std::string tag, label;
+    iss >> tag >> label;
+    if (tag == "alloc") {
       ++allocs;
-    if (line.find("free") != std::string::npos)
+      ++balance[label];
+    } else if (tag == "free") {
       ++frees;
+      --balance[label];
+    }
   }
   EXPECT_EQ(allocs, frees);
+  for (auto &p : balance)
+    EXPECT_EQ(p.second, 0);
   EXPECT_GT(allocs, 0u);
   EXPECT_GT(frees, 0u);
   EXPECT_TRUE(ok);
 }
 
 TEST(ProfilingStressTest, NoLoggingWhenUnset) {
-  std::remove("/tmp/orchard_tensor_profile.log");
+  orchard::tensor_profile_clear_log();
   unsetenv("ORCHARD_TENSOR_PROFILE");
+  orchard::tensor_profile_reset();
   std::array<std::int64_t, 8> shape{4, 1, 1, 1, 1, 1, 1, 1};
   Tensor cpu = Tensor::empty(shape, DType::f32, Device::cpu);
 #ifdef __APPLE__

@@ -21,12 +21,12 @@ This document captures the current state of the Orchard effort and the path forw
     - division gradients dispatch by device allowing CPU-only builds without Metal
     - the Metal allocator falls back to CPU memory on non-Apple hosts while still logging profiling events
       - `metal/runtime/runtime_cpu.cpp` implements this path so CPU builds omit Objective-C++ sources yet continue recording profiling data
-      - autograd nodes snapshot pre-mutation values to avoid recursive gradient application with tests covering single, repeated, and chained in-place scalar divisions and CPU add and mul backward paths, and backward consumes the saved tensor so gradients accumulate once
+      - autograd nodes snapshot inputs before in-place scalar divisions to avoid recursive gradient application with tests covering single, repeated, and chained `div_` calls and CPU add and mul backward paths, and backward consumes the saved tensor so gradients accumulate once
       - vector and matrix broadcast tests now align shapes to prevent prior crashes
-      - safe division masks zero denominators per element so CPU and Metal results match
-      - transpose backward routes gradients through the CPU kernel for host tensors and dispatches Metal kernels otherwise, forwarding the transposed gradient to upstream nodes
-      - sum and mean recompute output shapes and strides when dimensions drop or are kept so axis reductions stay aligned
-      - profiling reads `ORCHARD_TENSOR_PROFILE` on each query and pairs every `alloc` with a matching `free`; `tensor_profile_reset` lets tests refresh the flag between runs
+      - safe division recomputes denominator offsets after each broadcast step so zero denominators do not poison later elements
+      - transpose backward routes gradients through the CPU kernel for host tensors and dispatches Metal kernels otherwise, forwarding a freshly transposed gradient tensor to upstream nodes
+      - sum and mean recompute output shapes and strides when dimensions drop or are kept so axis 1 reductions stay aligned
+      - profiling reads `ORCHARD_TENSOR_PROFILE` on each query and pairs every `alloc` with a matching `free`; `tensor_profile_reset` lets tests refresh the flag between runs and `tensor_profile_clear_log` removes stale log files
         - CPU-only builds run transpose, matmul, mean, and sum backward tests to ensure gradients remain correct without Metal, expanding coverage beyond division
       - benchmarks compile on all hosts and report whether kernels executed on the CPU or Metal
     - macOS continuous integration caches builds, treats warnings as errors, and runs the test suite on every pull request.

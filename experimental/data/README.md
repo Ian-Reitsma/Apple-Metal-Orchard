@@ -15,3 +15,6 @@ Provide download scripts or links here if specific datasets become required for 
 - Use `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` during configuration when offline so the test suite links against the trimmed `third_party/googletest` tree or a system installation.
 - Keep commits single-purpose with an imperative summary line and cite paths and line numbers in the pull request description.
 - Use `rg` for repository-wide searches and work only on the default branch.
+- When profiling behaviour is exercised, call `tensor_profile_reset` after
+  toggling `ORCHARD_TENSOR_PROFILE` and clear `/tmp/orchard_tensor_profile.log`
+  with `tensor_profile_clear_log`.

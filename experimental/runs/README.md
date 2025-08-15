@@ -14,3 +14,6 @@ Add subdirectories or scripts as needed to track specific experiments. Include a
 - Before submitting related changes elsewhere, run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root and note any failures in the pull request.
 - Use `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` when configuring offline so tests link against the trimmed `third_party/googletest` tree or a system package.
 - Keep commits focused with a single imperative summary line and reference changed files by path and line number in the pull request message.
+- When profiling behaviour is exercised, reset the cached flag with
+  `tensor_profile_reset` after changing `ORCHARD_TENSOR_PROFILE` and remove
+  stale logs using `tensor_profile_clear_log`.

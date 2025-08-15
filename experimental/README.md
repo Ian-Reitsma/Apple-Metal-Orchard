@@ -40,3 +40,6 @@ These components remain only for historical comparison. They will be removed onc
 - Do not commit datasets, run outputs, or other generated files. The `data/` and `runs/` directories remain untracked to keep large artifacts out of version control.
 - Format C++ and Python sources consistently and keep commits to a single logical change with an imperative summary line.
 - Reference modified files by path and line number in the pull request message and work only on the default branch.
+- When profiling behaviour is exercised, call `tensor_profile_reset` after
+  toggling `ORCHARD_TENSOR_PROFILE` and remove stale logs with
+  `tensor_profile_clear_log`.

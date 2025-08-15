@@ -39,6 +39,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 1. With a configured build tree, run the `test` target. Tests live under `metal-tensor/tests/` and exercise CPU/Metal paths.
 2. Run configure + tests before every PR and capture failure logs in the PR description when toolchains are missing.
 3. When `FETCHCONTENT_FULLY_DISCONNECTED=ON` is set during configuration the `metal_tensor_tests` target links against the trimmed `third_party/googletest` tree or a system installation so the suite executes without network access.
+4. Tests that flip `ORCHARD_TENSOR_PROFILE` must call `tensor_profile_reset` after changing the environment and purge `/tmp/orchard_tensor_profile.log` with `tensor_profile_clear_log` to keep logs isolated.
 
 ## Benchmark Protocol
 - Invoke `python benchmarks/run.py -o /tmp/bench` after building to record kernel timings and hardware metadata. Results land under `/tmp/bench/<commit>/benchmarks.json`.
@@ -86,13 +87,20 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - Continuous integration now covers `macos-13` (M1) and `macos-14` (M2) with Xcode 15.3 pinned and Homebrew updates disabled. A Linux job installs a clang-based Objective-C++ toolchain and is allowed to fail for diagnostics.
 - Documentation outlines tensor internals, profiling hooks, and contributor expectations yet remains a living reference.
 - GoogleTest ships as a minimal vendored copy under `third_party/googletest` so tests compile without network access; obtain upstream tests and samples from the official repository when needed.
-  - Safe division masks zero denominators per element so CPU and Metal results
-    align.
-  - Sum and mean shift stride metadata after dropping dimensions, producing
-    accurate offsets when `keepdim` is false.
+  - Safe division recomputes denominator offsets after each broadcast step so
+    zero denominators do not poison later elements.
+  - Sum and mean shift stride metadata after axis reductions so dimension 1
+    yields correct shapes and values whether `keepdim` is true or false.
+  - Autograd nodes snapshot inputs before in-place scalar divisions so
+    backward uses pre-mutation values and gradients accumulate once even across
+    chained or repeated `div_` calls.
+  - Transpose backward dispatches a CPU kernel for host tensors and forwards a
+    freshly transposed gradient tensor upstream; Metal kernels are used when
+    inputs reside on the device.
   - Profiling reads `ORCHARD_TENSOR_PROFILE` on every query and pairs each
     `alloc` with a matching `free` entry even under load; `tensor_profile_reset`
-    forces the flag to refresh between runs.
+    forces the flag to refresh between runs and `tensor_profile_clear_log`
+    deletes stale log files.
 
 ## Milestones
 1. Phase out the PyTorch bridge once Tensor v0 covers FlashAttention and essential autograd features.

@@ -88,13 +88,14 @@ struct Storage {
   void retain() { refcount.fetch_add(1, std::memory_order_relaxed); }
   void release() {
     if (refcount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-      std::ostringstream oss;
-      oss << "free " << label << ' ' << data;
-      orchard::tensor_profile_log(oss.str());
       if (allocator) {
         allocator->deallocate(data, label.c_str());
-      } else if (deleter) {
-        deleter(data);
+      } else {
+        std::ostringstream oss;
+        oss << "free " << label << ' ' << data;
+        orchard::tensor_profile_log(oss.str());
+        if (deleter)
+          deleter(data);
       }
       {
         std::lock_guard<std::mutex> g(live_storage_mutex);
