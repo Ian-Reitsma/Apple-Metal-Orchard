@@ -47,10 +47,11 @@ public:
 private:
 #if defined(__APPLE__) && defined(__OBJC__)
   MTLDeviceRef device_ = nil;
-#else
-  MTLDeviceRef device_ = nullptr;
-#endif
   std::vector<MTLCommandQueueRef> queue_pool_;
+#else
+  [[maybe_unused]] MTLDeviceRef device_ = nullptr;
+  [[maybe_unused]] std::vector<MTLCommandQueueRef> queue_pool_;
+#endif
 };
 
 /// Obtain the Metal context associated with the calling thread.
