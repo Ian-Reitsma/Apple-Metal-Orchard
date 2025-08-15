@@ -21,8 +21,3 @@ target_link_libraries(metal_tensor_tests PRIVATE ${GTEST_LIB} orchard_core orcha
 target_compile_features(metal_tensor_tests PRIVATE cxx_std_20)
 
 add_test(NAME metal_tensor_tests COMMAND metal_tensor_tests)
-
-# Ensure the default test target builds the unit test binary when available.
-if(TARGET test)
-  add_dependencies(test metal_tensor_tests)
-endif()

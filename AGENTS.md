@@ -36,7 +36,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 3. Build the default target. Darwin emits `liborchard_core.a` and `liborchard_metal.a`; other platforms produce only `liborchard_core.a` as a CPU fallback.
 
 ## Test Protocol
-1. With a configured build tree, run the `test` target. Tests live under `metal-tensor/tests/` and exercise CPU/Metal paths.
+1. With a configured build tree, run the `check` target. Tests live under `metal-tensor/tests/` and exercise CPU/Metal paths.
 2. Run configure + tests before every PR and capture failure logs in the PR description when toolchains are missing.
 3. When `FETCHCONTENT_FULLY_DISCONNECTED=ON` is set during configuration the `metal_tensor_tests` target links against the trimmed `third_party/googletest` tree or a system installation so the suite executes without network access.
 4. Tests that flip `ORCHARD_TENSOR_PROFILE` must call `tensor_profile_reset` after changing the environment and purge `/tmp/orchard_tensor_profile.log` with `tensor_profile_clear_log` to keep logs isolated.
@@ -52,7 +52,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 - Always run configure + tests locally before PRs.
 - Use `rg` for repository searches and avoid `ls -R` or `grep -R` to keep scans efficient.
 - Commit messages use the imperative mood and include a short summary line only.
-- Capture the output of `cmake -S . -B build -G Ninja` and `cmake --build build --target test` and report failures in the pull request.
+- Capture the output of `cmake -S . -B build -G Ninja` and `cmake --build build --target check` and report failures in the pull request.
 - Reference touched files by path and line number in pull request descriptions.
 - Work exclusively on the default branch and refrain from creating new branches within this repository.
 - Keep the CI matrix green. macOS runners for `macos-13` and `macos-14` must pass; the Linux diagnostic job may fail but its logs require review before merging.
@@ -60,7 +60,7 @@ The directory layout is intentionally shallow to make navigation unambiguous:
 
 ## Workflow Checklist
 1. Run `cmake -S . -B build -G Ninja` from the repository root.
-2. Invoke `cmake --build build --target test` and note any errors.
+2. Invoke `cmake --build build --target check` and note any errors.
 3. Stage changes with `git add` and create a single commit per task.
 4. Formulate a pull request summarizing the intent, the files modified, and the test outcomes.
 

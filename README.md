@@ -31,7 +31,7 @@
 4. Non-Apple hosts follow the same steps. Metal discovery is skipped by the `CMAKE_SYSTEM_NAME` check, Objective-C++ sources are excluded, `runtime_cpu.cpp` drives the runtime, and only `liborchard_core.a` is produced while profiling events remain logged. Capture any diagnostics and see docs/tensor.md#toolchain for details.
 
 ## Testing
-Run `cmake --build build --target test` to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks with matching alloc/free counts, and autograd gradients. CPU-only builds exercise transpose, matmul, mean, and sum backward paths to validate gradients without Metal. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
+Run `cmake --build build --target check` to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks with matching alloc/free counts, and autograd gradients. CPU-only builds exercise transpose, matmul, mean, and sum backward paths to validate gradients without Metal. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
 
 ## Benchmarking
 Invoke `python benchmarks/run.py -o /tmp/bench` after building to capture kernel timings, hardware details, runtime flags, and whether Metal or CPU kernels executed. When `ORCHARD_TENSOR_PROFILE` is set the harness embeds allocator profiling lines from `/tmp/orchard_tensor_profile.log`, and setting `ORCHARD_FORCE_CPU=1` forces CPU-only runs. Results are written to `/tmp/bench/<commit>/benchmarks.json` where `<commit>` is the short Git hash. The harness exercises addition, multiplication, matmul, reduce_sum, mean, and transpose and enables reproducible comparisons across commits.
@@ -73,7 +73,7 @@ Setting ORCHARD_TENSOR_PROFILE enables logging of allocation and deallocation ev
 ## Contributor Protocol
 - Read `AGENTS.md` in this directory before touching any file; it is the definitive governance document.
 - Configure the project with `cmake -S . -B build -G Ninja` from the repository root and capture all configure output.
-- Run `cmake --build build --target test` and include any failure logs in pull requests, even on systems lacking the Metal toolchain.
+- Run `cmake --build build --target check` and include any failure logs in pull requests, even on systems lacking the Metal toolchain.
 - When toggling `ORCHARD_TENSOR_PROFILE` in tests, invoke `tensor_profile_reset` after changing the environment and delete stale `/tmp/orchard_tensor_profile.log` with `tensor_profile_clear_log`.
 - Search the tree with `rg` instead of recursive `ls` or `grep` commands.
 - Format C++20 and Objective-C++ sources using `clang-format`.

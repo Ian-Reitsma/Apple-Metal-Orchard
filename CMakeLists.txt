@@ -29,6 +29,12 @@ add_compile_options(-std=gnu++20 -Wall -Wextra -pedantic)
 
 add_subdirectory(metal-tensor)
 add_subdirectory(benchmarks)
+if(BUILD_TESTING AND TARGET metal_tensor_tests)
+  add_custom_target(check
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+    DEPENDS metal_tensor_tests
+  )
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND ORCHARD_BUILD_EXPERIMENTAL)
   add_subdirectory(experimental/orchard_ops)
 endif()
