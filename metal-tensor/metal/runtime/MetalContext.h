@@ -8,12 +8,14 @@
 
 #include <vector>
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(__OBJC__)
 #include <Metal/Metal.h>
+using MTLDeviceRef = id<MTLDevice>;
 using MTLCommandQueueRef = id<MTLCommandQueue>;
 using MTLCommandBufferRef = id<MTLCommandBuffer>;
 using MTLBlitCommandEncoderRef = id<MTLBlitCommandEncoder>;
 #else
+using MTLDeviceRef = void *;
 using MTLCommandQueueRef = void *;
 using MTLCommandBufferRef = void *;
 using MTLBlitCommandEncoderRef = void *;
@@ -25,9 +27,9 @@ class MetalContext {
 public:
   MetalContext();
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(__OBJC__)
   /// Returns the underlying MTLDevice.
-  id<MTLDevice> device() const { return device_; }
+  MTLDeviceRef device() const { return device_; }
 #endif
 
   /// Acquire a command queue for the current thread.
@@ -43,10 +45,12 @@ public:
                                                 MTLCommandBufferRef &cmdBuf);
 
 private:
-#ifdef __APPLE__
-  id<MTLDevice> device_ = nil;
-  std::vector<MTLCommandQueueRef> queue_pool_;
+#if defined(__APPLE__) && defined(__OBJC__)
+  MTLDeviceRef device_ = nil;
+#else
+  MTLDeviceRef device_ = nullptr;
 #endif
+  std::vector<MTLCommandQueueRef> queue_pool_;
 };
 
 /// Obtain the Metal context associated with the calling thread.
@@ -56,14 +60,14 @@ MetalContext &metal_context();
 
 // Inline implementations
 inline orchard::runtime::MetalContext::MetalContext() {
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(__OBJC__)
   device_ = MTLCreateSystemDefaultDevice();
 #endif
 }
 
 inline MTLCommandQueueRef
 orchard::runtime::MetalContext::acquire_command_queue() {
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(__OBJC__)
   if (!queue_pool_.empty()) {
     id<MTLCommandQueue> queue = queue_pool_.back();
     queue_pool_.pop_back();
@@ -77,7 +81,7 @@ orchard::runtime::MetalContext::acquire_command_queue() {
 
 inline void
 orchard::runtime::MetalContext::return_command_queue(MTLCommandQueueRef queue) {
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(__OBJC__)
   if (queue)
     queue_pool_.push_back(queue);
 #else
@@ -88,7 +92,7 @@ orchard::runtime::MetalContext::return_command_queue(MTLCommandQueueRef queue) {
 inline MTLBlitCommandEncoderRef
 orchard::runtime::MetalContext::acquire_blit_encoder(
     MTLCommandQueueRef &queue, MTLCommandBufferRef &cmdBuf) {
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(__OBJC__)
   queue = acquire_command_queue();
   cmdBuf = [queue commandBuffer];
   return [cmdBuf blitCommandEncoder];

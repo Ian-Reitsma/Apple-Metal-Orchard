@@ -370,18 +370,6 @@ void metal_div_backward_b(const float *g, const float *a, const float *b,
   ctx.return_command_queue(queue);
 }
 
-void metal_div_backward_a(const float *g, const float *b, float *ga,
-                          std::size_t n) {
-  for (std::size_t i = 0; i < n; ++i)
-    ga[i] = g[i] / b[i];
-}
-
-void metal_div_backward_b(const float *g, const float *a, const float *b,
-                          float *gb, std::size_t n) {
-  for (std::size_t i = 0; i < n; ++i)
-    gb[i] = -g[i] * a[i] / (b[i] * b[i]);
-}
-
 void metal_matmul(const float *a, const float *b, float *c, std::size_t m,
                   std::size_t n, std::size_t k) {
   static id<MTLComputePipelineState> pipeline = nil;
@@ -766,6 +754,21 @@ void metal_mean_axis(const float *a, float *out, const std::int64_t *shape,
   [strideBuf release];
   ctx.return_command_queue(queue);
 }
+
+#else
+
+void metal_div_backward_a(const float *g, const float *b, float *ga,
+                          std::size_t n) {
+  for (std::size_t i = 0; i < n; ++i)
+    ga[i] = g[i] / b[i];
+}
+
+void metal_div_backward_b(const float *g, const float *a, const float *b,
+                          float *gb, std::size_t n) {
+  for (std::size_t i = 0; i < n; ++i)
+    gb[i] = -g[i] * a[i] / (b[i] * b[i]);
+}
+
 #endif
 
 } // namespace orchard::runtime
