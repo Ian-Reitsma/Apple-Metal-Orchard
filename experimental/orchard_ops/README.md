@@ -24,3 +24,6 @@ Current additions include a dropout-aware FlashAttention backward launcher and a
 - Avoid committing compiled extensions, generated outputs, or files larger than five megabytes.
 - Keep each commit focused on one change with an imperative summary line and cite modified files by path and line number in the pull request.
 - Contribute on the default branch only and maintain a clean working tree after the commit.
+- When profiling behaviour is exercised, reset the cached flag with
+  `tensor_profile_reset` after changing `ORCHARD_TENSOR_PROFILE` and clear
+  `/tmp/orchard_tensor_profile.log` via `tensor_profile_clear_log`.

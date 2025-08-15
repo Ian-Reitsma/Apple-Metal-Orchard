@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -8,12 +9,22 @@
 
 namespace orchard {
 
+inline std::atomic<int> &tensor_profile_state() {
+  static std::atomic<int> state{-1};
+  return state;
+}
+
 inline bool tensor_profile_enabled() {
-  return std::getenv("ORCHARD_TENSOR_PROFILE") != nullptr;
+  int s = tensor_profile_state().load(std::memory_order_acquire);
+  if (s == -1) {
+    s = std::getenv("ORCHARD_TENSOR_PROFILE") ? 1 : 0;
+    tensor_profile_state().store(s, std::memory_order_release);
+  }
+  return s == 1;
 }
 
 inline void tensor_profile_reset() {
-  // Environment is queried on every call, leaving no cached state.
+  tensor_profile_state().store(-1, std::memory_order_release);
 }
 
 inline void tensor_profile_clear_log() {

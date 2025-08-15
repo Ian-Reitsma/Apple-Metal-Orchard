@@ -18,3 +18,6 @@ Expand or retire these tests as the Metal-native stack reaches parity and the ex
 - Do not check in test artifacts or datasets; keep large files under untracked directories.
 - Each commit must have a single imperative summary line and pull requests must cite modified files by path and line number.
 - Work solely on the default branch and ensure the worktree is clean after committing.
+- When profiling behaviour is exercised, invoke `tensor_profile_reset` after
+  toggling `ORCHARD_TENSOR_PROFILE` and clear `/tmp/orchard_tensor_profile.log`
+  with `tensor_profile_clear_log`.

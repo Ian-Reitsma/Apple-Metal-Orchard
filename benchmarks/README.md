@@ -10,6 +10,12 @@ Benchmark outputs are untracked; generate them locally as needed and attach rele
 ## Result Format
 Each JSON file includes a top-level dictionary keyed by operation name. Entries record average runtime in microseconds, tensor shapes, data types, and whether the kernel executed on the CPU or an mps device. Hardware metadata such as processor model and memory configuration appears under the `system` key.
 
+## Current Status
+- Benchmarks cover add, mul, matmul, reduce_sum, mean, and transpose and note
+  whether kernels executed on the CPU or an mps device. When
+  `ORCHARD_TENSOR_PROFILE` is set the harness embeds lines from
+  `/tmp/orchard_tensor_profile.log`.
+
 ## Contributor Protocol
 - Consult `../AGENTS.md` for the authoritative repository policy.
 - Run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root before pushing changes; include any diagnostic output in pull requests.
@@ -19,3 +25,6 @@ Each JSON file includes a top-level dictionary keyed by operation name. Entries 
 - Use `clang-format` for C++ and Objective-C++ sources.
 - Keep commits single-purpose with an imperative one-line summary and reference touched files by path and line number in the pull request.
 - Work on the default branch only and ensure the worktree is clean after committing.
+- When profiling behaviour is exercised, reset the cached flag with
+  `tensor_profile_reset` after changing `ORCHARD_TENSOR_PROFILE` and clear
+  `/tmp/orchard_tensor_profile.log` via `tensor_profile_clear_log`.

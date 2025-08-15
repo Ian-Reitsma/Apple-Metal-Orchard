@@ -21,11 +21,10 @@ void TransposeBackward::apply(Tensor &g) {
                                       static_cast<float *>(out.data_ptr()), m,
                                       n);
   }
-  if (pbase->grad_fn() && pbase->grad_fn().get() != this) {
+  if (pbase->grad_fn() && pbase->grad_fn().get() != this)
     pbase->grad_fn()->apply(out);
-  } else {
+  else
     accumulate(*pbase, out);
-  }
 }
 
 } // namespace orchard::core::autograd

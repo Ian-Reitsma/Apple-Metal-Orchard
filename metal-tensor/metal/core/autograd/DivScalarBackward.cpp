@@ -23,11 +23,10 @@ void DivScalarBackward::apply(Tensor &g) {
   }
   Tensor ga_t = ga.to(a.device());
   Tensor pa_grad = ga_t.to(pa->device());
-  if (a.grad_fn()) {
+  if (a.grad_fn())
     a.grad_fn()->apply(ga_t);
-  } else {
+  else
     accumulate(a, ga_t);
-  }
   if (!pa->grad().data_ptr())
     pa->set_grad(pa_grad);
 }

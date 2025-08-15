@@ -5,7 +5,7 @@
 - intrusive ref-counted Storage objects
 - Tensor::empty, Tensor::view, Tensor::slice, and zero-copy Tensor::fromData
 - CPU and Metal transfers via Tensor::to
-- allocation profiling and dump_live_tensors for debug tracing that polls `ORCHARD_TENSOR_PROFILE` on each query; `tensor_profile_reset` forces the flag to refresh between tests
+ - allocation profiling and dump_live_tensors for debug tracing; `ORCHARD_TENSOR_PROFILE` is cached after first use, `tensor_profile_reset` refreshes the flag between tests, and `tensor_profile_clear_log` removes stale logs
 - a starter autograd engine with Tensor::requires_grad, gradient tensors, and Node and Edge graph powering backward for matmul, reductions, elementwise add and multiply, division, transpose, and view
 - Metal compute kernels covering vector add, matmul, whole-tensor reductions, and a dedicated mean kernel, automatically selected when tensors live on an mps device
 - constant filling through Tensor::fill and storage detachment with Tensor::detach
@@ -16,12 +16,12 @@
 - Tests validate contiguity, profiling logs, command-queue pooling, multi-device transfers, alignment on non-contiguous views, constant filling, detachment semantics, and gradient propagation for elementwise add, multiply, divide, matmul, mean, reductions, transpose, and view transforms.
 - The Metal allocator falls back to host memory when Metal APIs are unavailable while still logging profiling events.
   `metal/runtime/runtime_cpu.cpp` provides this path and builds when Objective-C++ sources are excluded.
-- Autograd nodes snapshot pre-mutation values to avoid recursive gradient application with regression tests for single, repeated, and chained in-place scalar divisions alongside CPU add and mul backward paths, and backward consumes the saved tensor so gradients reference the original values and accumulate once.
+- Autograd nodes snapshot inputs before in-place scalar divisions to avoid recursive gradient application with regression tests for single, repeated, and chained `div_` calls alongside CPU add and mul backward paths, and backward consumes the saved tensor so gradients reference the original values and accumulate once.
 - Vector and matrix broadcast tests now align shapes to prevent prior crashes.
- - Safe division masks zero denominators per element so CPU and Metal results match.
-- Sum and mean recompute output shapes and strides after axis reductions so CPU results remain aligned.
-- Transpose backward routes gradients through the CPU kernel for host tensors and dispatches Metal kernels otherwise, forwarding the transposed gradient to upstream nodes.
-- Profiling polls `ORCHARD_TENSOR_PROFILE` on each query and pairs every allocation with a matching free; `tensor_profile_reset` refreshes the flag between runs and stress tests assert counts remain equal under queue pooling.
+ - Safe division recomputes denominator offsets after each broadcast step so zero denominators do not poison later elements.
+ - Sum and mean recompute output shapes and strides after axis reductions so dimension 1 yields correct shapes and values.
+- Transpose backward routes gradients through the CPU kernel for host tensors and dispatches Metal kernels otherwise, forwarding a freshly transposed gradient tensor to upstream nodes.
+ - Profiling caches `ORCHARD_TENSOR_PROFILE` after first use and pairs every allocation with a matching free; `tensor_profile_reset` refreshes the flag between runs and stress tests assert counts remain equal under queue pooling.
 - CPU-only builds run autograd regressions for transpose, matmul, mean, and sum so gradients remain validated without Metal kernels, expanding coverage beyond division.
 - Vector add and multiply, division, matmul, mean, and full reductions ship with Metal kernels for forward and backward paths, and transpose backward dispatches CPU or Metal kernels based on device.
 
@@ -56,6 +56,7 @@ CPU-only configurations also run transpose, matmul, mean, and sum backward tests
 ## Contributor Protocol
 - Study `../AGENTS.md` before changing any source, test, or documentation file; it governs every operation in this repository.
 - Run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root prior to committing, and capture any failure output.
+- When profiling tests modify `ORCHARD_TENSOR_PROFILE`, call `tensor_profile_reset` after each change and remove stale logs with `tensor_profile_clear_log`.
 - Use `rg` to search for symbols; avoid recursive `ls` or `grep` invocations.
 - Format C++20 and Objective-C++ code with `clang-format` and keep lines concise.
 - Never commit generated files, build artifacts, or assets larger than five megabytes.

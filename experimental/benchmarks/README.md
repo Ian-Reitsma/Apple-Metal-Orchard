@@ -15,3 +15,6 @@ Update or remove these scripts once equivalent benchmarking exists for the Metal
 - Do not commit generated benchmark results or any large artifacts.
 - Keep commits single-purpose with an imperative summary line, and reference modified files by path and line number in the pull request.
 - Work only on the default branch and maintain a clean worktree.
+- When profiling behaviour is exercised, invoke `tensor_profile_reset` after
+  toggling `ORCHARD_TENSOR_PROFILE` and delete stale logs with
+  `tensor_profile_clear_log`.
