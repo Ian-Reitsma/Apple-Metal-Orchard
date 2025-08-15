@@ -29,7 +29,7 @@
 ### 7. Validation Matrix & Testing Strategy
 - Unit tests live under `metal-tensor/tests/` and use a vendored copy of GoogleTest under `third_party/googletest`. They verify zero-copy `to("cpu")`, slice/view mutation coherence, clone storage independence, data pointer alignment, and allocator stress with 100 k alloc/free cycles.
 - Fuzz tests and race-condition tests (planned) will exercise random shape/stride transformations and multi-threaded reference counting. Any imbalance or lock misuse fails the suite to keep concurrency bugs from creeping in.
-- Before every pull request, run `cmake --build build --target test` on a configured build tree and capture success or failure in the pull request description.
+- Before every pull request, run `cmake --build build --target check` on a configured build tree and capture success or failure in the pull request description.
 
 ### 8. Instrumentation & Profiling Hooks
 - When compiled with `ORCHARD_PROFILE_ALLOC`, every allocation logs its UUID, shape, dtype, and device to `/tmp/orchard_tensor_profile.log`. These logs feed directly into Instruments or custom analysis scripts for leak tracking.

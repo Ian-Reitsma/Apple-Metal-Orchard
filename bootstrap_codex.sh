@@ -37,8 +37,8 @@ BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)"
 
 if [[ "$RUN_LOCAL_BUILD" == "1" ]]; then
   say "[local] cmake + tests"
-  cmake -S . -B build -G Ninja
-  cmake --build build --target test
+  cmake -S . -B build -G Ninja -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+  cmake --build build --target check
 fi
 
 say "[remote] ensure ${REMOTE_MAC_SSH}:${REMOTE_MAC_PATH}"
@@ -51,8 +51,8 @@ if [[ "$REMOTE_RUN_BUILD" == "1" ]]; then
   ssh -o BatchMode=yes "$REMOTE_MAC_SSH" bash -lc "
     set -euo pipefail
     cd '${REMOTE_MAC_PATH}'
-    cmake -S . -B build -G Ninja
-    cmake --build build --target test
+    cmake -S . -B build -G Ninja -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+    cmake --build build --target check
   "
   say "[remote] build/tests complete"
 else

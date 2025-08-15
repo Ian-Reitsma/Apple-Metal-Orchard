@@ -36,7 +36,7 @@ Scripts in `../benchmarks` record hardware information, runtime flags beginning 
 
 ## Contributor Protocol
 - Read `../AGENTS.md` before editing documentation; it describes required build and test steps and repository etiquette.
-- Run `cmake -S . -B build -G Ninja` and `cmake --build build --target test` from the repository root prior to opening a pull request; capture any failing output.
+- Run `cmake -S . -B build -G Ninja` and `cmake --build build --target check` from the repository root prior to opening a pull request; capture any failing output.
 - Search with `rg` instead of recursive `ls` or `grep`.
 - When profiling behaviour is exercised in tests, toggle `ORCHARD_TENSOR_PROFILE` with `tensor_profile_reset` and clear `/tmp/orchard_tensor_profile.log` via `tensor_profile_clear_log`.
 - Keep documentation free of fenced code blocks; use inline code to reference commands and identifiers.
