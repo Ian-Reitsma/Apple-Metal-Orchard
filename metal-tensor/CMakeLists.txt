@@ -18,6 +18,9 @@ target_include_directories(orchard_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/metal
 if(NOT APPLE)
   target_link_libraries(orchard_core PUBLIC uuid)
 endif()
+if(APPLE)
+  target_link_libraries(orchard_core PUBLIC "-framework Accelerate")
+endif()
 
 add_library(orchard_metal STATIC)
 
@@ -37,7 +40,13 @@ else()
 endif()
 
 target_include_directories(orchard_metal PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/metal)
-target_link_libraries(orchard_metal PRIVATE orchard_core)
+target_link_libraries(orchard_metal PUBLIC orchard_core)
+if(APPLE)
+  target_link_libraries(orchard_metal PUBLIC Metal::Metal objc)
+endif()
+
+# Resolve cross-library references when only linking orchard_metal.
+target_link_libraries(orchard_core PUBLIC orchard_metal)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
