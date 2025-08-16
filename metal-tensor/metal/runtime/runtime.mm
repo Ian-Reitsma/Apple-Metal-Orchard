@@ -1,6 +1,7 @@
 #include "runtime/CpuContext.h"
 #include "runtime/MetalContext.h"
 
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
@@ -41,6 +42,8 @@ void metal_copy_buffers(void *dstBuf, void *srcBuf, std::size_t bytes) {
   id<MTLCommandQueue> queue = nil;
   id<MTLCommandBuffer> cmd = nil;
   id<MTLBlitCommandEncoder> blit = ctx.acquire_blit_encoder(queue, cmd);
+  if (!blit)
+    throw std::runtime_error("Metal device unavailable");
   id<MTLBuffer> dst = (__bridge id<MTLBuffer>)dstBuf;
   id<MTLBuffer> src = (__bridge id<MTLBuffer>)srcBuf;
   [blit copyFromBuffer:src
@@ -56,6 +59,8 @@ void metal_copy_buffers(void *dstBuf, void *srcBuf, std::size_t bytes) {
 
 void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   id<MTLBuffer> dst = (__bridge id<MTLBuffer>)dstBuf;
   id<MTLBuffer> tmp =
       [ctx.device() newBufferWithBytes:src
@@ -64,6 +69,10 @@ void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
   id<MTLCommandQueue> queue = nil;
   id<MTLCommandBuffer> cmd = nil;
   id<MTLBlitCommandEncoder> blit = ctx.acquire_blit_encoder(queue, cmd);
+  if (!blit) {
+    [tmp release];
+    throw std::runtime_error("Metal device unavailable");
+  }
   [blit copyFromBuffer:tmp
            sourceOffset:0
                toBuffer:dst
@@ -78,6 +87,8 @@ void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
 
 void metal_copy_metal_to_cpu(void *dst, void *srcBuf, std::size_t bytes) {
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   id<MTLBuffer> src = (__bridge id<MTLBuffer>)srcBuf;
   id<MTLBuffer> tmp =
       [ctx.device() newBufferWithBytesNoCopy:dst
@@ -87,6 +98,10 @@ void metal_copy_metal_to_cpu(void *dst, void *srcBuf, std::size_t bytes) {
   id<MTLCommandQueue> queue = nil;
   id<MTLCommandBuffer> cmd = nil;
   id<MTLBlitCommandEncoder> blit = ctx.acquire_blit_encoder(queue, cmd);
+  if (!blit) {
+    [tmp release];
+    throw std::runtime_error("Metal device unavailable");
+  }
   [blit copyFromBuffer:src
            sourceOffset:0
                toBuffer:tmp

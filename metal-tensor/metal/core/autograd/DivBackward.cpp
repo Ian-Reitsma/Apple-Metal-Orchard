@@ -62,37 +62,20 @@ DivBackward::DivBackward(const Tensor &aa, const Tensor &bb, bool s)
       pb(const_cast<Tensor *>(&bb)), safe(s) {}
 
 void DivBackward::apply(Tensor &g) {
-  if (g.device() == Device::mps) {
-    std::size_t n = g.numel();
-    Tensor ga = Tensor::zerosLike(a);
-    Tensor gb = Tensor::zerosLike(b);
-    runtime::metal_div_backward_a(static_cast<const float *>(g.data_ptr()),
-                                  static_cast<const float *>(b.data_ptr()),
-                                  static_cast<float *>(ga.data_ptr()), n);
-    runtime::metal_div_backward_b(static_cast<const float *>(g.data_ptr()),
-                                  static_cast<const float *>(a.data_ptr()),
-                                  static_cast<const float *>(b.data_ptr()),
-                                  static_cast<float *>(gb.data_ptr()), n);
-    accumulate(*pa, ga);
-    accumulate(*pb, gb);
-    if (pa->grad_fn() && pa->grad_fn().get() != this)
-      pa->grad_fn()->apply(pa->grad());
-    if (pb->grad_fn() && pb->grad_fn().get() != this)
-      pb->grad_fn()->apply(pb->grad());
-  } else {
+  auto cpu_path = [&]() {
     Tensor gg = g.to(Device::cpu);
     Tensor aa = a.to(Device::cpu);
     Tensor bb = b.to(Device::cpu);
     BroadcastInfo info{};
     compute_broadcast(aa.shape(), aa.strides(), bb.shape(), bb.strides(), info);
     std::size_t n = numel(info.shape);
-    Tensor ga = Tensor::zerosLike(aa);
-    Tensor gb = Tensor::zerosLike(bb);
+    Tensor ga_cpu = Tensor::zerosLike(aa);
+    Tensor gb_cpu = Tensor::zerosLike(bb);
     auto *gp = static_cast<const float *>(gg.data_ptr());
     auto *ap = static_cast<const float *>(aa.data_ptr());
     auto *bp = static_cast<const float *>(bb.data_ptr());
-    auto *gap = static_cast<float *>(ga.data_ptr());
-    auto *gbp = static_cast<float *>(gb.data_ptr());
+    auto *gap = static_cast<float *>(ga_cpu.data_ptr());
+    auto *gbp = static_cast<float *>(gb_cpu.data_ptr());
     std::array<std::int64_t, 8> idx{};
     std::int64_t ao = aa.offset();
     std::int64_t bo = bb.offset();
@@ -114,8 +97,34 @@ void DivBackward::apply(Tensor &g) {
         bo -= info.b_strides[d] * info.shape[d];
       }
     }
-    accumulate(*pa, ga.to(pa->device()));
-    accumulate(*pb, gb.to(pb->device()));
+    accumulate(*pa, ga_cpu.to(pa->device()));
+    accumulate(*pb, gb_cpu.to(pb->device()));
+  };
+
+  if (g.device() == Device::mps) {
+    std::size_t n = g.numel();
+    Tensor ga = Tensor::zerosLike(a);
+    Tensor gb = Tensor::zerosLike(b);
+    try {
+      runtime::metal_div_backward_a(static_cast<const float *>(g.data_ptr()),
+                                    static_cast<const float *>(b.data_ptr()),
+                                    static_cast<float *>(ga.data_ptr()), n);
+      runtime::metal_div_backward_b(static_cast<const float *>(g.data_ptr()),
+                                    static_cast<const float *>(a.data_ptr()),
+                                    static_cast<const float *>(b.data_ptr()),
+                                    static_cast<float *>(gb.data_ptr()), n);
+      accumulate(*pa, ga);
+      accumulate(*pb, gb);
+    } catch (const std::runtime_error &) {
+      cpu_path();
+      if (pa->grad_fn() && pa->grad_fn().get() != this)
+        pa->grad_fn()->apply(pa->grad());
+      if (pb->grad_fn() && pb->grad_fn().get() != this)
+        pb->grad_fn()->apply(pb->grad());
+      return;
+    }
+  } else {
+    cpu_path();
   }
   if (pa->grad_fn() && pa->grad_fn().get() != this)
     pa->grad_fn()->apply(pa->grad());

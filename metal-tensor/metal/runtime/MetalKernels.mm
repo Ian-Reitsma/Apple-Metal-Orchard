@@ -46,19 +46,30 @@ void metal_add(const float *a, const float *b, float *c,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "add.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"add_arrays"];
+    if (!fn) {
+      std::string msg = "add_arrays function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "add pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -116,19 +127,30 @@ void metal_mul(const float *a, const float *b, float *c,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "mul.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"mul_arrays"];
+    if (!fn) {
+      std::string msg = "mul_arrays function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "mul pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -185,19 +207,30 @@ void metal_div(const float *a, const float *b, float *c,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "div.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"div_arrays"];
+    if (!fn) {
+      std::string msg = "div_arrays function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "div pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -255,19 +288,30 @@ void metal_div_scalar(const float *a, float scalar, float *out, std::size_t n,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "div.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"div_scalar"];
+    if (!fn) {
+      std::string msg = "div_scalar function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "div_scalar pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -294,6 +338,8 @@ void metal_mul_backward_a(const float *g, const float *b, float *ga,
                           std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("mul_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -303,11 +349,35 @@ void metal_mul_backward_a(const float *g, const float *b, float *ga,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "mul_backward.metal: ";
+      if (err) {
+        msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"mul_backward_a"];
+    if (!fn) {
+      std::string msg = "mul_backward_a function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "mul_backward_a pipeline: ";
+      if (err) {
+        msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -329,6 +399,8 @@ void metal_mul_backward_b(const float *g, const float *a, float *gb,
                           std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("mul_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -338,11 +410,35 @@ void metal_mul_backward_b(const float *g, const float *a, float *gb,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "mul_backward.metal: ";
+      if (err) {
+        msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"mul_backward_b"];
+    if (!fn) {
+      std::string msg = "mul_backward_b function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "mul_backward_b pipeline: ";
+      if (err) {
+        msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -376,19 +472,30 @@ void metal_div_backward_a(const float *g, const float *b, float *ga,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "div.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"div_backward_a"];
+    if (!fn) {
+      std::string msg = "div_backward_a function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "div_backward_a pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -426,19 +533,30 @@ void metal_div_backward_b(const float *g, const float *a, const float *b,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "div.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"div_backward_b"];
+    if (!fn) {
+      std::string msg = "div_backward_b function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "div_backward_b pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -477,19 +595,30 @@ void metal_matmul(const float *a, const float *b, float *c, std::size_t m,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "matmul.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"matmul_kernel"];
+    if (!fn) {
+      std::string msg = "matmul_kernel function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "matmul pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -532,19 +661,30 @@ void metal_reduce_sum(const float *a, float *out, std::size_t n) {
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "reduce_sum.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"reduce_sum"];
+    if (!fn) {
+      std::string msg = "reduce_sum function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "reduce_sum pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -582,19 +722,30 @@ void metal_mean(const float *a, float *out, std::size_t n) {
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "mean.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"mean"];
+    if (!fn) {
+      std::string msg = "mean function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "mean pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -634,19 +785,30 @@ void metal_matmul_backward_a(const float *g, const float *b, float *ga,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "matmul_backward.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"matmul_backward_a"];
+    if (!fn) {
+      std::string msg = "matmul_backward_a function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "matmul_backward_a pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -691,19 +853,30 @@ void metal_matmul_backward_b(const float *g, const float *a, float *gb,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "matmul_backward.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"matmul_backward_b"];
+    if (!fn) {
+      std::string msg = "matmul_backward_b function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "matmul_backward_b pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -747,19 +920,30 @@ void metal_transpose_backward(const float *g, float *out, std::size_t m,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "transpose_backward.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"transpose_backward"];
+    if (!fn) {
+      std::string msg = "transpose_backward function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "transpose_backward pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -799,19 +983,30 @@ void metal_fill(float *out, float value, std::size_t n) {
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "fill.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"fill_value"];
+    if (!fn) {
+      std::string msg = "fill_value function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "fill pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -853,19 +1048,30 @@ void metal_reduce_sum_axis(const float *a, float *out,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "reduce_sum_axis.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"reduce_sum_axis"];
+    if (!fn) {
+      std::string msg = "reduce_sum_axis function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "reduce_sum_axis pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];
@@ -918,19 +1124,30 @@ void metal_mean_axis(const float *a, float *out, const std::int64_t *shape,
                                                       error:&err];
     if (err || !lib) {
       std::string msg = "mean_axis.metal: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       [nsSrc release];
       throw std::runtime_error(msg);
     }
     id<MTLFunction> fn = [lib newFunctionWithName:@"mean_axis"];
+    if (!fn) {
+      std::string msg = "mean_axis function missing";
+      NSLog(@"%s", msg.c_str());
+      [lib release];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
     if (err || !pipeline) {
       std::string msg = "mean_axis pipeline: ";
-      if (err)
+      if (err) {
         msg += [[err localizedDescription] UTF8String];
+        NSLog(@"%@", err);
+      }
       throw std::runtime_error(msg);
     }
     [nsSrc release];

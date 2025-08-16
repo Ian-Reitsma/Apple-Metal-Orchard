@@ -498,13 +498,23 @@ Tensor Tensor::add(const Tensor &other) const {
         static_cast<float *>(out.impl_->storage->data), info.shape,
         [](float x, float y) { return x + y; });
   } else if (impl_->device == Device::mps) {
-    runtime::metal_add(
-        static_cast<const float *>(impl_->storage->data) + impl_->offset,
-        static_cast<const float *>(other.impl_->storage->data) +
-            other.impl_->offset,
-        static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
-        info.shape.data(), info.a_strides.data(), info.b_strides.data(),
-        static_cast<std::uint32_t>(rank_of(info.shape)), n);
+    try {
+      runtime::metal_add(
+          static_cast<const float *>(impl_->storage->data) + impl_->offset,
+          static_cast<const float *>(other.impl_->storage->data) +
+              other.impl_->offset,
+          static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
+          info.shape.data(), info.a_strides.data(), info.b_strides.data(),
+          static_cast<std::uint32_t>(rank_of(info.shape)), n);
+    } catch (const std::runtime_error &) {
+      cpu_broadcast_binary<false>(
+          static_cast<const float *>(impl_->storage->data), impl_->offset,
+          info.a_strides,
+          static_cast<const float *>(other.impl_->storage->data),
+          other.impl_->offset, info.b_strides,
+          static_cast<float *>(out.impl_->storage->data), info.shape,
+          [](float x, float y) { return x + y; });
+    }
   }
   out.set_requires_grad(requires_grad_ || other.requires_grad_);
   if (out.requires_grad())
@@ -529,13 +539,23 @@ Tensor Tensor::mul(const Tensor &other) const {
         static_cast<float *>(out.impl_->storage->data), info.shape,
         [](float x, float y) { return x * y; });
   } else if (impl_->device == Device::mps) {
-    runtime::metal_mul(
-        static_cast<const float *>(impl_->storage->data) + impl_->offset,
-        static_cast<const float *>(other.impl_->storage->data) +
-            other.impl_->offset,
-        static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
-        info.shape.data(), info.a_strides.data(), info.b_strides.data(),
-        static_cast<std::uint32_t>(rank_of(info.shape)), n);
+    try {
+      runtime::metal_mul(
+          static_cast<const float *>(impl_->storage->data) + impl_->offset,
+          static_cast<const float *>(other.impl_->storage->data) +
+              other.impl_->offset,
+          static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
+          info.shape.data(), info.a_strides.data(), info.b_strides.data(),
+          static_cast<std::uint32_t>(rank_of(info.shape)), n);
+    } catch (const std::runtime_error &) {
+      cpu_broadcast_binary<false>(
+          static_cast<const float *>(impl_->storage->data), impl_->offset,
+          info.a_strides,
+          static_cast<const float *>(other.impl_->storage->data),
+          other.impl_->offset, info.b_strides,
+          static_cast<float *>(out.impl_->storage->data), info.shape,
+          [](float x, float y) { return x * y; });
+    }
   }
   bool rg = requires_grad_ || other.requires_grad_;
   out.set_requires_grad(rg);
@@ -586,13 +606,32 @@ Tensor Tensor::div(const Tensor &other, bool safe) const {
           [](float x, float y) { return x / y; });
     }
   } else if (impl_->device == Device::mps) {
-    runtime::metal_div(
-        static_cast<const float *>(impl_->storage->data) + impl_->offset,
-        static_cast<const float *>(other.impl_->storage->data) +
-            other.impl_->offset,
-        static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
-        info.shape.data(), info.a_strides.data(), info.b_strides.data(),
-        static_cast<std::uint32_t>(rank_of(info.shape)), n, safe);
+    try {
+      runtime::metal_div(
+          static_cast<const float *>(impl_->storage->data) + impl_->offset,
+          static_cast<const float *>(other.impl_->storage->data) +
+              other.impl_->offset,
+          static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
+          info.shape.data(), info.a_strides.data(), info.b_strides.data(),
+          static_cast<std::uint32_t>(rank_of(info.shape)), n, safe);
+    } catch (const std::runtime_error &) {
+      Tensor ob = safe ? other.to(Device::cpu) : other_cpu;
+      if (safe) {
+        cpu_broadcast_binary<true>(
+            static_cast<const float *>(impl_->storage->data), impl_->offset,
+            info.a_strides, static_cast<const float *>(ob.impl_->storage->data),
+            ob.impl_->offset, info.b_strides,
+            static_cast<float *>(out.impl_->storage->data), info.shape,
+            [](float x, float y) { return x / y; });
+      } else {
+        cpu_broadcast_binary<false>(
+            static_cast<const float *>(impl_->storage->data), impl_->offset,
+            info.a_strides, static_cast<const float *>(ob.impl_->storage->data),
+            ob.impl_->offset, info.b_strides,
+            static_cast<float *>(out.impl_->storage->data), info.shape,
+            [](float x, float y) { return x / y; });
+      }
+    }
   }
   bool rg = requires_grad_ || other.requires_grad_;
   out.set_requires_grad(rg);
@@ -620,11 +659,23 @@ Tensor Tensor::div(float scalar, bool safe) const {
         op[i] = ap[i] / scalar;
     }
   } else if (impl_->device == Device::mps) {
-    runtime::metal_div_scalar(
-        static_cast<const float *>(impl_->storage->data) + impl_->offset,
-        scalar,
-        static_cast<float *>(out.impl_->storage->data) + out.impl_->offset, n,
-        safe);
+    try {
+      runtime::metal_div_scalar(
+          static_cast<const float *>(impl_->storage->data) + impl_->offset,
+          scalar,
+          static_cast<float *>(out.impl_->storage->data) + out.impl_->offset, n,
+          safe);
+    } catch (const std::runtime_error &) {
+      auto *ap = static_cast<const float *>(data_ptr());
+      auto *op = static_cast<float *>(out.data_ptr());
+      if (safe && scalar == 0.0f) {
+        for (std::size_t i = 0; i < n; ++i)
+          op[i] = 0.0f;
+      } else {
+        for (std::size_t i = 0; i < n; ++i)
+          op[i] = ap[i] / scalar;
+      }
+    }
   }
   out.set_requires_grad(requires_grad_);
   if (requires_grad_) {
@@ -658,10 +709,21 @@ Tensor &Tensor::div_(float scalar, bool safe) {
         ap[i] /= scalar;
     }
   } else if (impl_->device == Device::mps) {
-    runtime::metal_div_scalar(
-        static_cast<const float *>(impl_->storage->data) + impl_->offset,
-        scalar, static_cast<float *>(impl_->storage->data) + impl_->offset, n,
-        safe);
+    try {
+      runtime::metal_div_scalar(
+          static_cast<const float *>(impl_->storage->data) + impl_->offset,
+          scalar, static_cast<float *>(impl_->storage->data) + impl_->offset, n,
+          safe);
+    } catch (const std::runtime_error &) {
+      auto *ap = static_cast<float *>(data_ptr());
+      if (safe && scalar == 0.0f) {
+        for (std::size_t i = 0; i < n; ++i)
+          ap[i] = 0.0f;
+      } else {
+        for (std::size_t i = 0; i < n; ++i)
+          ap[i] /= scalar;
+      }
+    }
   }
   if (requires_grad_)
     set_grad_fn(std::make_shared<autograd::DivScalarBackward>(before, *this,
@@ -690,10 +752,24 @@ Tensor Tensor::matmul(const Tensor &other) const {
       }
     }
   } else if (impl_->device == Device::mps) {
-    runtime::metal_matmul(
-        static_cast<const float *>(impl_->storage->data),
-        static_cast<const float *>(other.impl_->storage->data),
-        static_cast<float *>(out.impl_->storage->data), m, n, k);
+    try {
+      runtime::metal_matmul(
+          static_cast<const float *>(impl_->storage->data),
+          static_cast<const float *>(other.impl_->storage->data),
+          static_cast<float *>(out.impl_->storage->data), m, n, k);
+    } catch (const std::runtime_error &) {
+      auto *ap = static_cast<const float *>(data_ptr());
+      auto *bp = static_cast<const float *>(other.data_ptr());
+      auto *cp = static_cast<float *>(out.data_ptr());
+      for (std::int64_t i = 0; i < m; ++i) {
+        for (std::int64_t j = 0; j < n; ++j) {
+          float s = 0.0f;
+          for (std::int64_t p = 0; p < k; ++p)
+            s += ap[i * k + p] * bp[p * n + j];
+          cp[i * n + j] = s;
+        }
+      }
+    }
   }
   bool rg = requires_grad_ || other.requires_grad_;
   out.set_requires_grad(rg);
@@ -714,9 +790,17 @@ Tensor Tensor::sum() const {
       s += ap[i];
     *static_cast<float *>(out.data_ptr()) = s;
   } else if (impl_->device == Device::mps) {
-    runtime::metal_reduce_sum(static_cast<const float *>(impl_->storage->data),
-                              static_cast<float *>(out.impl_->storage->data),
-                              numel());
+    try {
+      runtime::metal_reduce_sum(
+          static_cast<const float *>(impl_->storage->data),
+          static_cast<float *>(out.impl_->storage->data), numel());
+    } catch (const std::runtime_error &) {
+      float s = 0.0f;
+      auto *ap = static_cast<const float *>(data_ptr());
+      for (std::size_t i = 0; i < numel(); ++i)
+        s += ap[i];
+      *static_cast<float *>(out.data_ptr()) = s;
+    }
   }
   out.set_requires_grad(requires_grad_);
   if (requires_grad_) {
@@ -736,9 +820,17 @@ Tensor Tensor::mean() const {
       s += ap[i];
     *static_cast<float *>(out.data_ptr()) = s / static_cast<float>(numel());
   } else if (impl_->device == Device::mps) {
-    runtime::metal_mean(static_cast<const float *>(impl_->storage->data),
-                        static_cast<float *>(out.impl_->storage->data),
-                        numel());
+    try {
+      runtime::metal_mean(static_cast<const float *>(impl_->storage->data),
+                          static_cast<float *>(out.impl_->storage->data),
+                          numel());
+    } catch (const std::runtime_error &) {
+      float s = 0.0f;
+      auto *ap = static_cast<const float *>(data_ptr());
+      for (std::size_t i = 0; i < numel(); ++i)
+        s += ap[i];
+      *static_cast<float *>(out.data_ptr()) = s / static_cast<float>(numel());
+    }
   }
   out.set_requires_grad(requires_grad_);
   if (requires_grad_) {
@@ -793,12 +885,38 @@ Tensor Tensor::sum(int dim, bool keepdim) const {
       op[i] = s;
     }
   } else if (impl_->device == Device::mps) {
-    runtime::metal_reduce_sum_axis(
-        static_cast<const float *>(impl_->storage->data),
-        static_cast<float *>(out.impl_->storage->data), outShape.data(),
-        impl_->strides.data(), static_cast<std::uint32_t>(rank_of(outShape)),
-        static_cast<std::uint32_t>(axisLen), static_cast<std::uint32_t>(dim),
-        static_cast<std::size_t>(core::tensor::numel(outShape)));
+    try {
+      runtime::metal_reduce_sum_axis(
+          static_cast<const float *>(impl_->storage->data),
+          static_cast<float *>(out.impl_->storage->data), outShape.data(),
+          impl_->strides.data(), static_cast<std::uint32_t>(rank_of(outShape)),
+          static_cast<std::uint32_t>(axisLen), static_cast<std::uint32_t>(dim),
+          static_cast<std::size_t>(core::tensor::numel(outShape)));
+    } catch (const std::runtime_error &) {
+      auto *ap = static_cast<const float *>(data_ptr());
+      auto *op = static_cast<float *>(out.data_ptr());
+      int r_out = keepdim ? r : r - 1;
+      std::size_t n = 1;
+      for (int i = 0; i < r_out; ++i)
+        n *= outShape[i];
+      for (std::size_t i = 0; i < n; ++i) {
+        std::size_t idx = i;
+        std::int64_t base = impl_->offset;
+        for (int d = r_out - 1; d >= 0; --d) {
+          std::int64_t s = outShape[d];
+          std::int64_t coord = idx % s;
+          idx /= s;
+          base += coord * outStrides[d];
+        }
+        float s = 0.0f;
+        std::int64_t pos = base;
+        for (std::int64_t j = 0; j < axisLen; ++j) {
+          s += ap[pos];
+          pos += impl_->strides[dim];
+        }
+        op[i] = s;
+      }
+    }
   }
   out.set_requires_grad(requires_grad_);
   if (requires_grad_)
@@ -853,12 +971,38 @@ Tensor Tensor::mean(int dim, bool keepdim) const {
       op[i] = s / static_cast<float>(axisLen);
     }
   } else if (impl_->device == Device::mps) {
-    runtime::metal_mean_axis(
-        static_cast<const float *>(impl_->storage->data),
-        static_cast<float *>(out.impl_->storage->data), outShape.data(),
-        impl_->strides.data(), static_cast<std::uint32_t>(rank_of(outShape)),
-        static_cast<std::uint32_t>(axisLen), static_cast<std::uint32_t>(dim),
-        static_cast<std::size_t>(core::tensor::numel(outShape)));
+    try {
+      runtime::metal_mean_axis(
+          static_cast<const float *>(impl_->storage->data),
+          static_cast<float *>(out.impl_->storage->data), outShape.data(),
+          impl_->strides.data(), static_cast<std::uint32_t>(rank_of(outShape)),
+          static_cast<std::uint32_t>(axisLen), static_cast<std::uint32_t>(dim),
+          static_cast<std::size_t>(core::tensor::numel(outShape)));
+    } catch (const std::runtime_error &) {
+      auto *ap = static_cast<const float *>(data_ptr());
+      auto *op = static_cast<float *>(out.data_ptr());
+      int r_out = keepdim ? r : r - 1;
+      std::size_t n = 1;
+      for (int i = 0; i < r_out; ++i)
+        n *= outShape[i];
+      for (std::size_t i = 0; i < n; ++i) {
+        std::size_t idx = i;
+        std::int64_t base = impl_->offset;
+        for (int d = r_out - 1; d >= 0; --d) {
+          std::int64_t s = outShape[d];
+          std::int64_t coord = idx % s;
+          idx /= s;
+          base += coord * outStrides[d];
+        }
+        float s = 0.0f;
+        std::int64_t pos = base;
+        for (std::int64_t j = 0; j < axisLen; ++j) {
+          s += ap[pos];
+          pos += impl_->strides[dim];
+        }
+        op[i] = s / static_cast<float>(axisLen);
+      }
+    }
   }
   out.set_requires_grad(requires_grad_);
   if (requires_grad_)
@@ -876,7 +1020,13 @@ void Tensor::fill(float value) {
     for (std::size_t i = 0; i < n; ++i)
       p[i] = value;
   } else if (impl_->device == Device::mps) {
-    runtime::metal_fill(static_cast<float *>(impl_->storage->data), value, n);
+    try {
+      runtime::metal_fill(static_cast<float *>(impl_->storage->data), value, n);
+    } catch (const std::runtime_error &) {
+      auto *p = static_cast<float *>(data_ptr());
+      for (std::size_t i = 0; i < n; ++i)
+        p[i] = value;
+    }
   }
 }
 

@@ -14,9 +14,10 @@ else()
   set(GTEST_LIB gtest_main)
 endif()
 
-add_executable(metal_tensor_tests tensor_tests.cpp multi_device_tests.cpp)
+add_executable(metal_tensor_tests tensor_tests.cpp multi_device_tests.cpp fallback_tests.cpp high_rank_tests.cpp)
 
-target_link_libraries(metal_tensor_tests PRIVATE ${GTEST_LIB} orchard_core orchard_metal)
+# Group core and metal to avoid duplicate archives on the link line.
+target_link_libraries(metal_tensor_tests PRIVATE ${GTEST_LIB} $<LINK_GROUP:RESCAN,orchard_core,orchard_metal>)
 
 target_compile_features(metal_tensor_tests PRIVATE cxx_std_20)
 
