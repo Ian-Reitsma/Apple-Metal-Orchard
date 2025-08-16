@@ -3,6 +3,8 @@
 #include "../../runtime/MetalKernels.h"
 #include "../tensor/Tensor.h"
 
+#include <cstdint>
+
 using namespace orchard::core::tensor;
 
 namespace orchard::core::autograd {
@@ -18,11 +20,17 @@ void Node::accumulate(Tensor &t, const Tensor &grad) {
   if (t.grad().device() == Device::mps) {
     auto shape = t.shape();
     auto strides = t.strides();
+    std::uint32_t dims = 0;
+    for (auto s : shape) {
+      if (s <= 0)
+        break;
+      ++dims;
+    }
     orchard::runtime::metal_add(static_cast<const float *>(grad.data_ptr()),
                                 static_cast<const float *>(t.grad().data_ptr()),
                                 static_cast<float *>(t.grad().data_ptr()),
                                 shape.data(), strides.data(), strides.data(),
-                                n);
+                                dims, n);
   } else {
     orchard::runtime::cpu_context().add(
         static_cast<const float *>(grad.data_ptr()),

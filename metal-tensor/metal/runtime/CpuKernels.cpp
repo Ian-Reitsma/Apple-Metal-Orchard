@@ -2,24 +2,23 @@
 
 #include <array>
 #include <cstring>
+#include <vector>
 
 namespace orchard::runtime {
 
 void metal_add(const float *a, const float *b, float *c,
                const std::int64_t *shape, const std::int64_t *astrides,
-               const std::int64_t *bstrides, std::size_t n) {
-  std::array<std::int64_t, 8> shp;
-  std::array<std::int64_t, 8> as;
-  std::array<std::int64_t, 8> bs;
-  std::memcpy(shp.data(), shape, sizeof(std::int64_t) * 8);
-  std::memcpy(as.data(), astrides, sizeof(std::int64_t) * 8);
-  std::memcpy(bs.data(), bstrides, sizeof(std::int64_t) * 8);
-  std::array<std::int64_t, 8> idx{};
+               const std::int64_t *bstrides, std::uint32_t dims,
+               std::size_t n) {
+  std::vector<std::int64_t> shp(shape, shape + dims);
+  std::vector<std::int64_t> as(astrides, astrides + dims);
+  std::vector<std::int64_t> bs(bstrides, bstrides + dims);
+  std::vector<std::int64_t> idx(dims);
   std::int64_t ao = 0;
   std::int64_t bo = 0;
   for (std::size_t i = 0; i < n; ++i) {
     c[i] = a[ao] + b[bo];
-    for (int d = 7; d >= 0; --d) {
+    for (int d = dims - 1; d >= 0; --d) {
       idx[d]++;
       ao += as[d];
       if (bs[d] != 0)
@@ -47,19 +46,17 @@ void metal_div_scalar(const float *a, float scalar, float *out, std::size_t n,
 
 void metal_mul(const float *a, const float *b, float *c,
                const std::int64_t *shape, const std::int64_t *astrides,
-               const std::int64_t *bstrides, std::size_t n) {
-  std::array<std::int64_t, 8> shp;
-  std::array<std::int64_t, 8> as;
-  std::array<std::int64_t, 8> bs;
-  std::memcpy(shp.data(), shape, sizeof(std::int64_t) * 8);
-  std::memcpy(as.data(), astrides, sizeof(std::int64_t) * 8);
-  std::memcpy(bs.data(), bstrides, sizeof(std::int64_t) * 8);
-  std::array<std::int64_t, 8> idx{};
+               const std::int64_t *bstrides, std::uint32_t dims,
+               std::size_t n) {
+  std::vector<std::int64_t> shp(shape, shape + dims);
+  std::vector<std::int64_t> as(astrides, astrides + dims);
+  std::vector<std::int64_t> bs(bstrides, bstrides + dims);
+  std::vector<std::int64_t> idx(dims);
   std::int64_t ao = 0;
   std::int64_t bo = 0;
   for (std::size_t i = 0; i < n; ++i) {
     c[i] = a[ao] * b[bo];
-    for (int d = 7; d >= 0; --d) {
+    for (int d = dims - 1; d >= 0; --d) {
       idx[d]++;
       ao += as[d];
       if (bs[d] != 0)
@@ -76,20 +73,18 @@ void metal_mul(const float *a, const float *b, float *c,
 
 void metal_div(const float *a, const float *b, float *c,
                const std::int64_t *shape, const std::int64_t *astrides,
-               const std::int64_t *bstrides, std::size_t n, bool safe) {
-  std::array<std::int64_t, 8> shp;
-  std::array<std::int64_t, 8> as;
-  std::array<std::int64_t, 8> bs;
-  std::memcpy(shp.data(), shape, sizeof(std::int64_t) * 8);
-  std::memcpy(as.data(), astrides, sizeof(std::int64_t) * 8);
-  std::memcpy(bs.data(), bstrides, sizeof(std::int64_t) * 8);
-  std::array<std::int64_t, 8> idx{};
+               const std::int64_t *bstrides, std::uint32_t dims, std::size_t n,
+               bool safe) {
+  std::vector<std::int64_t> shp(shape, shape + dims);
+  std::vector<std::int64_t> as(astrides, astrides + dims);
+  std::vector<std::int64_t> bs(bstrides, bstrides + dims);
+  std::vector<std::int64_t> idx(dims);
   std::int64_t ao = 0;
   std::int64_t bo = 0;
   for (std::size_t i = 0; i < n; ++i) {
     float bv = b[bo];
     c[i] = (safe && bv == 0.0f) ? 0.0f : a[ao] / bv;
-    for (int d = 7; d >= 0; --d) {
+    for (int d = dims - 1; d >= 0; --d) {
       idx[d]++;
       ao += as[d];
       if (bs[d] != 0)
@@ -156,16 +151,15 @@ void metal_mean(const float *a, float *out, std::size_t n) {
 
 void metal_reduce_sum_axis(const float *a, float *out,
                            const std::int64_t *shape,
-                           const std::int64_t *strides, std::uint32_t axis_len,
-                           std::uint32_t axis, std::size_t n) {
-  std::array<std::int64_t, 8> shp;
-  std::array<std::int64_t, 8> st;
-  std::memcpy(shp.data(), shape, sizeof(std::int64_t) * 8);
-  std::memcpy(st.data(), strides, sizeof(std::int64_t) * 8);
+                           const std::int64_t *strides, std::uint32_t dims,
+                           std::uint32_t axis_len, std::uint32_t axis,
+                           std::size_t n) {
+  std::vector<std::int64_t> shp(shape, shape + dims);
+  std::vector<std::int64_t> st(strides, strides + dims);
   for (std::size_t i = 0; i < n; ++i) {
     std::size_t idx = i;
     long base = 0;
-    for (int d = 7; d >= 0; --d) {
+    for (int d = dims - 1; d >= 0; --d) {
       long s = shp[d];
       long coord = idx % s;
       idx /= s;
@@ -182,16 +176,15 @@ void metal_reduce_sum_axis(const float *a, float *out,
 }
 
 void metal_mean_axis(const float *a, float *out, const std::int64_t *shape,
-                     const std::int64_t *strides, std::uint32_t axis_len,
-                     std::uint32_t axis, std::size_t n) {
-  std::array<std::int64_t, 8> shp;
-  std::array<std::int64_t, 8> st;
-  std::memcpy(shp.data(), shape, sizeof(std::int64_t) * 8);
-  std::memcpy(st.data(), strides, sizeof(std::int64_t) * 8);
+                     const std::int64_t *strides, std::uint32_t dims,
+                     std::uint32_t axis_len, std::uint32_t axis,
+                     std::size_t n) {
+  std::vector<std::int64_t> shp(shape, shape + dims);
+  std::vector<std::int64_t> st(strides, strides + dims);
   for (std::size_t i = 0; i < n; ++i) {
     std::size_t idx = i;
     long base = 0;
-    for (int d = 7; d >= 0; --d) {
+    for (int d = dims - 1; d >= 0; --d) {
       long s = shp[d];
       long coord = idx % s;
       idx /= s;

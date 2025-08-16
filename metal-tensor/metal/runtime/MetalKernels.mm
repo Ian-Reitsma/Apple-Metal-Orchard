@@ -29,9 +29,12 @@ std::string load_kernel_src(const char *file) {
 #ifdef __APPLE__
 void metal_add(const float *a, const float *b, float *c,
                const std::int64_t *shape, const std::int64_t *astrides,
-               const std::int64_t *bstrides, std::size_t n) {
+               const std::int64_t *bstrides, std::uint32_t dims,
+               std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("add.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -41,11 +44,24 @@ void metal_add(const float *a, const float *b, float *c,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "add.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"add_arrays"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "add pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -56,15 +72,15 @@ void metal_add(const float *a, const float *b, float *c,
   [enc setBuffer:(__bridge id<MTLBuffer>)c offset:0 atIndex:2];
   id<MTLBuffer> shapeBuf =
       [ctx.device() newBufferWithBytes:shape
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   id<MTLBuffer> aBuf =
       [ctx.device() newBufferWithBytes:astrides
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   id<MTLBuffer> bBuf =
       [ctx.device() newBufferWithBytes:bstrides
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   [enc setBuffer:shapeBuf offset:0 atIndex:3];
   [enc setBuffer:aBuf offset:0 atIndex:4];
@@ -83,9 +99,12 @@ void metal_add(const float *a, const float *b, float *c,
 
 void metal_mul(const float *a, const float *b, float *c,
                const std::int64_t *shape, const std::int64_t *astrides,
-               const std::int64_t *bstrides, std::size_t n) {
+               const std::int64_t *bstrides, std::uint32_t dims,
+               std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("mul.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -95,11 +114,24 @@ void metal_mul(const float *a, const float *b, float *c,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "mul.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"mul_arrays"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "mul pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -110,15 +142,15 @@ void metal_mul(const float *a, const float *b, float *c,
   [enc setBuffer:(__bridge id<MTLBuffer>)c offset:0 atIndex:2];
   id<MTLBuffer> shapeBuf =
       [ctx.device() newBufferWithBytes:shape
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   id<MTLBuffer> aBuf =
       [ctx.device() newBufferWithBytes:astrides
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   id<MTLBuffer> bBuf =
       [ctx.device() newBufferWithBytes:bstrides
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   [enc setBuffer:shapeBuf offset:0 atIndex:3];
   [enc setBuffer:aBuf offset:0 atIndex:4];
@@ -136,9 +168,12 @@ void metal_mul(const float *a, const float *b, float *c,
 }
 void metal_div(const float *a, const float *b, float *c,
                const std::int64_t *shape, const std::int64_t *astrides,
-               const std::int64_t *bstrides, std::size_t n, bool safe) {
+               const std::int64_t *bstrides, std::uint32_t dims, std::size_t n,
+               bool safe) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("div.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -148,11 +183,24 @@ void metal_div(const float *a, const float *b, float *c,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "div.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"div_arrays"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "div pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -163,15 +211,15 @@ void metal_div(const float *a, const float *b, float *c,
   [enc setBuffer:(__bridge id<MTLBuffer>)c offset:0 atIndex:2];
   id<MTLBuffer> shapeBuf =
       [ctx.device() newBufferWithBytes:shape
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   id<MTLBuffer> aBuf =
       [ctx.device() newBufferWithBytes:astrides
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   id<MTLBuffer> bBuf =
       [ctx.device() newBufferWithBytes:bstrides
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   [enc setBuffer:shapeBuf offset:0 atIndex:3];
   [enc setBuffer:aBuf offset:0 atIndex:4];
@@ -194,6 +242,8 @@ void metal_div_scalar(const float *a, float scalar, float *out, std::size_t n,
                       bool safe) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("div.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -203,11 +253,24 @@ void metal_div_scalar(const float *a, float scalar, float *out, std::size_t n,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "div.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"div_scalar"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "div_scalar pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -300,6 +363,8 @@ void metal_div_backward_a(const float *g, const float *b, float *ga,
                           std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("div.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -309,11 +374,24 @@ void metal_div_backward_a(const float *g, const float *b, float *ga,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "div.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"div_backward_a"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "div_backward_a pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -335,6 +413,8 @@ void metal_div_backward_b(const float *g, const float *a, const float *b,
                           float *gb, std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("div.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -344,11 +424,24 @@ void metal_div_backward_b(const float *g, const float *a, const float *b,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "div.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"div_backward_b"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "div_backward_b pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -371,6 +464,8 @@ void metal_matmul(const float *a, const float *b, float *c, std::size_t m,
                   std::size_t n, std::size_t k) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("matmul.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -380,11 +475,24 @@ void metal_matmul(const float *a, const float *b, float *c, std::size_t m,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "matmul.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"matmul_kernel"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "matmul pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -411,6 +519,8 @@ void metal_matmul(const float *a, const float *b, float *c, std::size_t m,
 void metal_reduce_sum(const float *a, float *out, std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("reduce_sum.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -420,11 +530,24 @@ void metal_reduce_sum(const float *a, float *out, std::size_t n) {
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "reduce_sum.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"reduce_sum"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "reduce_sum pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -446,6 +569,8 @@ void metal_reduce_sum(const float *a, float *out, std::size_t n) {
 void metal_mean(const float *a, float *out, std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("mean.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -455,11 +580,24 @@ void metal_mean(const float *a, float *out, std::size_t n) {
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "mean.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"mean"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "mean pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -483,6 +621,8 @@ void metal_matmul_backward_a(const float *g, const float *b, float *ga,
                              std::size_t m, std::size_t n, std::size_t k) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("matmul_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -492,11 +632,24 @@ void metal_matmul_backward_a(const float *g, const float *b, float *ga,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "matmul_backward.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"matmul_backward_a"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "matmul_backward_a pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -525,6 +678,8 @@ void metal_matmul_backward_b(const float *g, const float *a, float *gb,
                              std::size_t m, std::size_t n, std::size_t k) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("matmul_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -534,11 +689,24 @@ void metal_matmul_backward_b(const float *g, const float *a, float *gb,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "matmul_backward.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"matmul_backward_b"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "matmul_backward_b pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -566,6 +734,8 @@ void metal_transpose_backward(const float *g, float *out, std::size_t m,
                               std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("transpose_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -575,11 +745,24 @@ void metal_transpose_backward(const float *g, float *out, std::size_t m,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "transpose_backward.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"transpose_backward"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "transpose_backward pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -603,6 +786,8 @@ void metal_transpose_backward(const float *g, float *out, std::size_t m,
 void metal_fill(float *out, float value, std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("fill.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -612,11 +797,24 @@ void metal_fill(float *out, float value, std::size_t n) {
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "fill.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"fill_value"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "fill pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -637,10 +835,13 @@ void metal_fill(float *out, float value, std::size_t n) {
 
 void metal_reduce_sum_axis(const float *a, float *out,
                            const std::int64_t *shape,
-                           const std::int64_t *strides, std::uint32_t axis_len,
-                           std::uint32_t axis, std::size_t n) {
+                           const std::int64_t *strides, std::uint32_t dims,
+                           std::uint32_t axis_len, std::uint32_t axis,
+                           std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("reduce_sum_axis.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -650,11 +851,24 @@ void metal_reduce_sum_axis(const float *a, float *out,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "reduce_sum_axis.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"reduce_sum_axis"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "reduce_sum_axis pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -664,11 +878,11 @@ void metal_reduce_sum_axis(const float *a, float *out,
   [enc setBuffer:(__bridge id<MTLBuffer>)out offset:0 atIndex:1];
   id<MTLBuffer> shapeBuf =
       [ctx.device() newBufferWithBytes:shape
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   id<MTLBuffer> strideBuf =
       [ctx.device() newBufferWithBytes:strides
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   [enc setBuffer:shapeBuf offset:0 atIndex:2];
   [enc setBuffer:strideBuf offset:0 atIndex:3];
@@ -686,10 +900,13 @@ void metal_reduce_sum_axis(const float *a, float *out,
 }
 
 void metal_mean_axis(const float *a, float *out, const std::int64_t *shape,
-                     const std::int64_t *strides, std::uint32_t axis_len,
-                     std::uint32_t axis, std::size_t n) {
+                     const std::int64_t *strides, std::uint32_t dims,
+                     std::uint32_t axis_len, std::uint32_t axis,
+                     std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
+  if (!ctx.device())
+    throw std::runtime_error("Metal device unavailable");
   if (!pipeline) {
     std::string src = load_kernel_src("mean_axis.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
@@ -699,11 +916,24 @@ void metal_mean_axis(const float *a, float *out, const std::int64_t *shape,
     id<MTLLibrary> lib = [ctx.device() newLibraryWithSource:nsSrc
                                                     options:nil
                                                       error:&err];
-    [nsSrc release];
+    if (err || !lib) {
+      std::string msg = "mean_axis.metal: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      [nsSrc release];
+      throw std::runtime_error(msg);
+    }
     id<MTLFunction> fn = [lib newFunctionWithName:@"mean_axis"];
     pipeline = [ctx.device() newComputePipelineStateWithFunction:fn error:&err];
     [fn release];
     [lib release];
+    if (err || !pipeline) {
+      std::string msg = "mean_axis pipeline: ";
+      if (err)
+        msg += [[err localizedDescription] UTF8String];
+      throw std::runtime_error(msg);
+    }
+    [nsSrc release];
   }
   id<MTLCommandQueue> queue = ctx.acquire_command_queue();
   id<MTLCommandBuffer> cmd = [queue commandBuffer];
@@ -713,11 +943,11 @@ void metal_mean_axis(const float *a, float *out, const std::int64_t *shape,
   [enc setBuffer:(__bridge id<MTLBuffer>)out offset:0 atIndex:1];
   id<MTLBuffer> shapeBuf =
       [ctx.device() newBufferWithBytes:shape
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   id<MTLBuffer> strideBuf =
       [ctx.device() newBufferWithBytes:strides
-                                length:sizeof(std::int64_t) * 8
+                                length:sizeof(std::int64_t) * dims
                                options:MTLResourceStorageModeShared];
   [enc setBuffer:shapeBuf offset:0 atIndex:2];
   [enc setBuffer:strideBuf offset:0 atIndex:3];

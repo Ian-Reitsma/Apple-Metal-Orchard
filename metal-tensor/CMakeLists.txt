@@ -47,7 +47,6 @@ if(APPLE)
 endif()
 
 # Resolve cross-library references when only linking orchard_metal.
-target_link_libraries(orchard_core PUBLIC orchard_metal)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
