@@ -6,6 +6,7 @@
 #include <functional>
 #include <mutex>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -46,8 +47,10 @@ struct Storage {
     uuid_unparse(id, uuid_str);
 
     void *ptr = alloc->allocate(bytes, uuid_str);
-    if (!ptr)
-      return nullptr;
+    if (!ptr) {
+      throw std::runtime_error(
+          "Storage allocation failed: missing Metal device");
+    }
 
     Storage *st = new Storage;
     st->data = ptr;

@@ -5,6 +5,7 @@
 #include <array>
 #include <cstring>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 
 #ifdef __APPLE__
@@ -13,6 +14,18 @@
 
 namespace orchard::runtime {
 
+namespace {
+std::string load_kernel_src(const char *file) {
+  std::string path = std::string(ORCHARD_KERNEL_DIR) + "/" + file;
+  std::ifstream ifs(path);
+  if (!ifs.good()) {
+    throw std::runtime_error("Failed to open Metal kernel: " + path);
+  }
+  return std::string((std::istreambuf_iterator<char>(ifs)),
+                     std::istreambuf_iterator<char>());
+}
+} // namespace
+
 #ifdef __APPLE__
 void metal_add(const float *a, const float *b, float *c,
                const std::int64_t *shape, const std::int64_t *astrides,
@@ -20,9 +33,7 @@ void metal_add(const float *a, const float *b, float *c,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/add.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("add.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -76,9 +87,7 @@ void metal_mul(const float *a, const float *b, float *c,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/mul.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("mul.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -131,9 +140,7 @@ void metal_div(const float *a, const float *b, float *c,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/div.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("div.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -188,9 +195,7 @@ void metal_div_scalar(const float *a, float scalar, float *out, std::size_t n,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/div.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("div.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -227,9 +232,7 @@ void metal_mul_backward_a(const float *g, const float *b, float *ga,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/mul_backward.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("mul_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -264,9 +267,7 @@ void metal_mul_backward_b(const float *g, const float *a, float *gb,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/mul_backward.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("mul_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -300,9 +301,7 @@ void metal_div_backward_a(const float *g, const float *b, float *ga,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/div.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("div.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -337,9 +336,7 @@ void metal_div_backward_b(const float *g, const float *a, const float *b,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/div.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("div.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -375,9 +372,7 @@ void metal_matmul(const float *a, const float *b, float *c, std::size_t m,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/matmul.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("matmul.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -417,9 +412,7 @@ void metal_reduce_sum(const float *a, float *out, std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/reduce_sum.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("reduce_sum.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -454,9 +447,7 @@ void metal_mean(const float *a, float *out, std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/mean.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("mean.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -493,9 +484,7 @@ void metal_matmul_backward_a(const float *g, const float *b, float *ga,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/matmul_backward.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("matmul_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -537,9 +526,7 @@ void metal_matmul_backward_b(const float *g, const float *a, float *gb,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/matmul_backward.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("matmul_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -580,9 +567,7 @@ void metal_transpose_backward(const float *g, float *out, std::size_t m,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/transpose_backward.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("transpose_backward.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -619,9 +604,7 @@ void metal_fill(float *out, float value, std::size_t n) {
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/fill.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("fill.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -659,9 +642,7 @@ void metal_reduce_sum_axis(const float *a, float *out,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/reduce_sum_axis.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("reduce_sum_axis.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
@@ -710,9 +691,7 @@ void metal_mean_axis(const float *a, float *out, const std::int64_t *shape,
   static id<MTLComputePipelineState> pipeline = nil;
   MetalContext &ctx = metal_context();
   if (!pipeline) {
-    std::ifstream ifs("metal/kernels/mean_axis.metal");
-    std::string src((std::istreambuf_iterator<char>(ifs)),
-                    std::istreambuf_iterator<char>());
+    std::string src = load_kernel_src("mean_axis.metal");
     NSString *nsSrc = [[NSString alloc] initWithBytes:src.data()
                                                length:src.size()
                                              encoding:NSUTF8StringEncoding];
