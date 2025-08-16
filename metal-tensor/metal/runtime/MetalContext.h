@@ -29,7 +29,8 @@ public:
 
 #if defined(__APPLE__) && defined(__OBJC__)
   /// Returns the underlying MTLDevice.
-  MTLDeviceRef device() const { return device_; }
+  MTLDeviceRef device() const { return has_device_ ? device_ : nil; }
+  bool has_device() const { return has_device_; }
 #endif
 
   /// Acquire a command queue for the current thread.
@@ -47,9 +48,11 @@ public:
 private:
 #if defined(__APPLE__) && defined(__OBJC__)
   MTLDeviceRef device_ = nil;
+  bool has_device_ = false;
   std::vector<MTLCommandQueueRef> queue_pool_;
 #else
   [[maybe_unused]] MTLDeviceRef device_ = nullptr;
+  [[maybe_unused]] bool has_device_ = false;
   [[maybe_unused]] std::vector<MTLCommandQueueRef> queue_pool_;
 #endif
 };
@@ -63,18 +66,21 @@ MetalContext &metal_context();
 inline orchard::runtime::MetalContext::MetalContext() {
 #if defined(__APPLE__) && defined(__OBJC__)
   device_ = MTLCreateSystemDefaultDevice();
+  has_device_ = device_ != nil;
 #endif
 }
 
 inline MTLCommandQueueRef
 orchard::runtime::MetalContext::acquire_command_queue() {
 #if defined(__APPLE__) && defined(__OBJC__)
+  if (!has_device_)
+    return nil;
   if (!queue_pool_.empty()) {
     id<MTLCommandQueue> queue = queue_pool_.back();
     queue_pool_.pop_back();
     return queue;
   }
-  return [device_ newCommandQueue];
+  return has_device_ ? [device_ newCommandQueue] : nil;
 #else
   return nullptr;
 #endif
@@ -83,7 +89,7 @@ orchard::runtime::MetalContext::acquire_command_queue() {
 inline void
 orchard::runtime::MetalContext::return_command_queue(MTLCommandQueueRef queue) {
 #if defined(__APPLE__) && defined(__OBJC__)
-  if (queue)
+  if (has_device_ && queue)
     queue_pool_.push_back(queue);
 #else
   (void)queue;
@@ -94,6 +100,11 @@ inline MTLBlitCommandEncoderRef
 orchard::runtime::MetalContext::acquire_blit_encoder(
     MTLCommandQueueRef &queue, MTLCommandBufferRef &cmdBuf) {
 #if defined(__APPLE__) && defined(__OBJC__)
+  if (!has_device_) {
+    queue = nil;
+    cmdBuf = nil;
+    return nil;
+  }
   queue = acquire_command_queue();
   cmdBuf = [queue commandBuffer];
   return [cmdBuf blitCommandEncoder];

@@ -503,7 +503,8 @@ Tensor Tensor::add(const Tensor &other) const {
         static_cast<const float *>(other.impl_->storage->data) +
             other.impl_->offset,
         static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
-        info.shape.data(), info.a_strides.data(), info.b_strides.data(), n);
+        info.shape.data(), info.a_strides.data(), info.b_strides.data(),
+        static_cast<std::uint32_t>(rank_of(info.shape)), n);
   }
   out.set_requires_grad(requires_grad_ || other.requires_grad_);
   if (out.requires_grad())
@@ -533,7 +534,8 @@ Tensor Tensor::mul(const Tensor &other) const {
         static_cast<const float *>(other.impl_->storage->data) +
             other.impl_->offset,
         static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
-        info.shape.data(), info.a_strides.data(), info.b_strides.data(), n);
+        info.shape.data(), info.a_strides.data(), info.b_strides.data(),
+        static_cast<std::uint32_t>(rank_of(info.shape)), n);
   }
   bool rg = requires_grad_ || other.requires_grad_;
   out.set_requires_grad(rg);
@@ -589,8 +591,8 @@ Tensor Tensor::div(const Tensor &other, bool safe) const {
         static_cast<const float *>(other.impl_->storage->data) +
             other.impl_->offset,
         static_cast<float *>(out.impl_->storage->data) + out.impl_->offset,
-        info.shape.data(), info.a_strides.data(), info.b_strides.data(), n,
-        safe);
+        info.shape.data(), info.a_strides.data(), info.b_strides.data(),
+        static_cast<std::uint32_t>(rank_of(info.shape)), n, safe);
   }
   bool rg = requires_grad_ || other.requires_grad_;
   out.set_requires_grad(rg);
@@ -794,8 +796,8 @@ Tensor Tensor::sum(int dim, bool keepdim) const {
     runtime::metal_reduce_sum_axis(
         static_cast<const float *>(impl_->storage->data),
         static_cast<float *>(out.impl_->storage->data), outShape.data(),
-        impl_->strides.data(), static_cast<std::uint32_t>(axisLen),
-        static_cast<std::uint32_t>(dim),
+        impl_->strides.data(), static_cast<std::uint32_t>(rank_of(outShape)),
+        static_cast<std::uint32_t>(axisLen), static_cast<std::uint32_t>(dim),
         static_cast<std::size_t>(core::tensor::numel(outShape)));
   }
   out.set_requires_grad(requires_grad_);
@@ -854,8 +856,8 @@ Tensor Tensor::mean(int dim, bool keepdim) const {
     runtime::metal_mean_axis(
         static_cast<const float *>(impl_->storage->data),
         static_cast<float *>(out.impl_->storage->data), outShape.data(),
-        impl_->strides.data(), static_cast<std::uint32_t>(axisLen),
-        static_cast<std::uint32_t>(dim),
+        impl_->strides.data(), static_cast<std::uint32_t>(rank_of(outShape)),
+        static_cast<std::uint32_t>(axisLen), static_cast<std::uint32_t>(dim),
         static_cast<std::size_t>(core::tensor::numel(outShape)));
   }
   out.set_requires_grad(requires_grad_);
