@@ -1,8 +1,9 @@
 // CPU-only runtime implementation used when Metal APIs are unavailable.
 #include "runtime/CpuContext.h"
 #include "runtime/MetalContext.h"
+#include "runtime/Runtime.h"
 
-#include <cstring>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
@@ -37,16 +38,16 @@ void register_runtime_devices() {
   register_device("cpu", []() -> void * { return &cpu_context(); });
 }
 
-void metal_copy_buffers(void *dstBuf, void *srcBuf, std::size_t bytes) {
-  std::memcpy(dstBuf, srcBuf, bytes);
+void metal_copy_buffers(void *, const void *, std::size_t) {
+  throw std::runtime_error("Metal device unavailable");
 }
 
-void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
-  std::memcpy(dstBuf, src, bytes);
+void metal_copy_cpu_to_metal(void *, const void *, std::size_t) {
+  throw std::runtime_error("Metal device unavailable");
 }
 
-void metal_copy_metal_to_cpu(void *dst, void *srcBuf, std::size_t bytes) {
-  std::memcpy(dst, srcBuf, bytes);
+void metal_copy_metal_to_cpu(void *, const void *, std::size_t) {
+  throw std::runtime_error("Metal device unavailable");
 }
 
 } // namespace orchard::runtime
