@@ -11,6 +11,11 @@ namespace orchard::runtime {
 
 using ContextFactory = void *(*)();
 
+MetalContext &metal_context() {
+  thread_local MetalContext ctx;
+  return ctx;
+}
+
 namespace {
 
 // Simple registry mapping device names to context factories.
@@ -38,15 +43,15 @@ void register_runtime_devices() {
   register_device("cpu", []() -> void * { return &cpu_context(); });
 }
 
-void metal_copy_buffers(void *, const void *, std::size_t) {
+void metal_copy_buffers(MTLBufferRef, MTLBufferRef, std::size_t) {
   throw std::runtime_error("Metal device unavailable");
 }
 
-void metal_copy_cpu_to_metal(void *, const void *, std::size_t) {
+void metal_copy_cpu_to_metal(MTLBufferRef, const void *, std::size_t) {
   throw std::runtime_error("Metal device unavailable");
 }
 
-void metal_copy_metal_to_cpu(void *, const void *, std::size_t) {
+void metal_copy_metal_to_cpu(void *, MTLBufferRef, std::size_t) {
   throw std::runtime_error("Metal device unavailable");
 }
 

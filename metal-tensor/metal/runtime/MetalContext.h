@@ -8,20 +8,22 @@
 
 #include <vector>
 
+namespace orchard::runtime {
+
 #if defined(__APPLE__) && defined(__OBJC__)
 #include <Metal/Metal.h>
 using MTLDeviceRef = id<MTLDevice>;
 using MTLCommandQueueRef = id<MTLCommandQueue>;
 using MTLCommandBufferRef = id<MTLCommandBuffer>;
 using MTLBlitCommandEncoderRef = id<MTLBlitCommandEncoder>;
+using MTLBufferRef = id<MTLBuffer>;
 #else
 using MTLDeviceRef = void *;
 using MTLCommandQueueRef = void *;
 using MTLCommandBufferRef = void *;
 using MTLBlitCommandEncoderRef = void *;
+using MTLBufferRef = void *;
 #endif
-
-namespace orchard::runtime {
 
 class MetalContext {
 public:
@@ -30,8 +32,10 @@ public:
 #if defined(__APPLE__) && defined(__OBJC__)
   /// Returns the underlying MTLDevice.
   MTLDeviceRef device() const { return device_missing_ ? nil : device_; }
-  bool has_device() const { return !device_missing_; }
+#else
+  MTLDeviceRef device() const { return nullptr; }
 #endif
+  bool has_device() const { return !device_missing_; }
 
   /// Acquire a command queue for the current thread.
   MTLCommandQueueRef acquire_command_queue();
@@ -48,11 +52,13 @@ public:
 private:
 #if defined(__APPLE__) && defined(__OBJC__)
   MTLDeviceRef device_ = nil;
-  bool device_missing_ = false;
-  std::vector<MTLCommandQueueRef> queue_pool_;
 #else
   [[maybe_unused]] MTLDeviceRef device_ = nullptr;
-  [[maybe_unused]] bool device_missing_ = true;
+#endif
+  bool device_missing_ = true;
+#if defined(__APPLE__) && defined(__OBJC__)
+  std::vector<MTLCommandQueueRef> queue_pool_;
+#else
   [[maybe_unused]] std::vector<MTLCommandQueueRef> queue_pool_;
 #endif
 };
@@ -70,7 +76,7 @@ inline orchard::runtime::MetalContext::MetalContext() {
 #endif
 }
 
-inline MTLCommandQueueRef
+inline orchard::runtime::MTLCommandQueueRef
 orchard::runtime::MetalContext::acquire_command_queue() {
 #if defined(__APPLE__) && defined(__OBJC__)
   if (device_missing_)
@@ -86,8 +92,8 @@ orchard::runtime::MetalContext::acquire_command_queue() {
 #endif
 }
 
-inline void
-orchard::runtime::MetalContext::return_command_queue(MTLCommandQueueRef queue) {
+inline void orchard::runtime::MetalContext::return_command_queue(
+    orchard::runtime::MTLCommandQueueRef queue) {
 #if defined(__APPLE__) && defined(__OBJC__)
   if (!device_missing_ && queue)
     queue_pool_.push_back(queue);
@@ -96,9 +102,10 @@ orchard::runtime::MetalContext::return_command_queue(MTLCommandQueueRef queue) {
 #endif
 }
 
-inline MTLBlitCommandEncoderRef
+inline orchard::runtime::MTLBlitCommandEncoderRef
 orchard::runtime::MetalContext::acquire_blit_encoder(
-    MTLCommandQueueRef &queue, MTLCommandBufferRef &cmdBuf) {
+    orchard::runtime::MTLCommandQueueRef &queue,
+    orchard::runtime::MTLCommandBufferRef &cmdBuf) {
 #if defined(__APPLE__) && defined(__OBJC__)
   if (device_missing_) {
     queue = nil;
@@ -113,9 +120,4 @@ orchard::runtime::MetalContext::acquire_blit_encoder(
   (void)cmdBuf;
   return nullptr;
 #endif
-}
-
-inline orchard::runtime::MetalContext &orchard::runtime::metal_context() {
-  thread_local MetalContext ctx;
-  return ctx;
 }

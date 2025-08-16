@@ -10,6 +10,11 @@ namespace orchard::runtime {
 
 using ContextFactory = void *(*)();
 
+MetalContext &metal_context() {
+  thread_local MetalContext ctx;
+  return ctx;
+}
+
 namespace {
 
 // Simple registry mapping device names to context factories.
@@ -38,15 +43,18 @@ void register_runtime_devices() {
 }
 
 #ifdef __APPLE__
-void metal_copy_buffers(void *dstBuf, const void *srcBuf, std::size_t bytes) {
+void metal_copy_buffers(MTLBufferRef dstBuf, MTLBufferRef srcBuf,
+                        std::size_t bytes) {
   MetalContext &ctx = metal_context();
+  if (!ctx.has_device())
+    throw std::runtime_error("Metal device unavailable");
   id<MTLCommandQueue> queue = nil;
   id<MTLCommandBuffer> cmd = nil;
   id<MTLBlitCommandEncoder> blit = ctx.acquire_blit_encoder(queue, cmd);
   if (!blit)
     throw std::runtime_error("Metal device unavailable");
-  id<MTLBuffer> dst = (__bridge id<MTLBuffer>)dstBuf;
-  id<MTLBuffer> src = (__bridge id<MTLBuffer>)(const_cast<void *>(srcBuf));
+  id<MTLBuffer> dst = dstBuf;
+  id<MTLBuffer> src = srcBuf;
   [blit copyFromBuffer:src
            sourceOffset:0
                toBuffer:dst
@@ -58,11 +66,12 @@ void metal_copy_buffers(void *dstBuf, const void *srcBuf, std::size_t bytes) {
   ctx.return_command_queue(queue);
 }
 
-void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
+void metal_copy_cpu_to_metal(MTLBufferRef dstBuf, const void *src,
+                             std::size_t bytes) {
   MetalContext &ctx = metal_context();
-  if (!ctx.device())
+  if (!ctx.has_device())
     throw std::runtime_error("Metal device unavailable");
-  id<MTLBuffer> dst = (__bridge id<MTLBuffer>)dstBuf;
+  id<MTLBuffer> dst = dstBuf;
   id<MTLBuffer> tmp =
       [ctx.device() newBufferWithBytes:src
                                 length:bytes
@@ -86,11 +95,12 @@ void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
   [tmp release];
 }
 
-void metal_copy_metal_to_cpu(void *dst, const void *srcBuf, std::size_t bytes) {
+void metal_copy_metal_to_cpu(void *dst, MTLBufferRef srcBuf,
+                             std::size_t bytes) {
   MetalContext &ctx = metal_context();
-  if (!ctx.device())
+  if (!ctx.has_device())
     throw std::runtime_error("Metal device unavailable");
-  id<MTLBuffer> src = (__bridge id<MTLBuffer>)(const_cast<void *>(srcBuf));
+  id<MTLBuffer> src = srcBuf;
   id<MTLBuffer> tmp =
       [ctx.device() newBufferWithBytesNoCopy:dst
                                       length:bytes
