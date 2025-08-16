@@ -1,6 +1,7 @@
 #include "core/autograd/Node.h"
 #include "core/tensor/Tensor.h"
 #include "runtime/MetalContext.h"
+#include "runtime/Runtime.h"
 #include <array>
 #include <cstdlib>
 #include <gtest/gtest.h>
@@ -26,19 +27,22 @@ TEST(FallbackTest, AccumulateFallsBackToCpu) {
   EXPECT_FLOAT_EQ(grad[0], 1.0f);
   EXPECT_FLOAT_EQ(grad[1], 1.0f);
 }
-#ifdef __APPLE__
 TEST(FallbackTest, CopyBuffersThrowsWithoutDevice) {
   std::array<std::int64_t, 8> shape{1, 1, 1, 1, 1, 1, 1, 1};
   Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
   Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
   EXPECT_THROW(
       {
-        orchard::runtime::metal_copy_buffers(a.data_ptr(), b.data_ptr(),
-                                             sizeof(float));
+        try {
+          orchard::runtime::metal_copy_buffers(a.data_ptr(), b.data_ptr(),
+                                               sizeof(float));
+        } catch (const std::runtime_error &e) {
+          EXPECT_STREQ("Metal device unavailable", e.what());
+          throw;
+        }
       },
       std::runtime_error);
 }
-#endif
 
 TEST(FallbackTest, AddFallsBackWhenKernelMissing) {
   const char *orig = std::getenv("ORCHARD_KERNEL_DIR");

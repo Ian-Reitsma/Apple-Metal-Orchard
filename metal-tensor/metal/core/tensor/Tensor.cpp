@@ -1,6 +1,7 @@
 #include "Tensor.h"
 #include "../../runtime/CpuContext.h"
 #include "../../runtime/MetalKernels.h"
+#include "../../runtime/Runtime.h"
 #include "../autograd/AddBackward.h"
 #include "../autograd/DivBackward.h"
 #include "../autograd/DivScalarBackward.h"
@@ -19,14 +20,6 @@
 #include <mutex>
 #include <sstream>
 #include <stdexcept>
-
-#ifdef __APPLE__
-namespace orchard::runtime {
-void metal_copy_buffers(void *dstBuf, void *srcBuf, std::size_t bytes);
-void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes);
-void metal_copy_metal_to_cpu(void *dst, void *srcBuf, std::size_t bytes);
-} // namespace orchard::runtime
-#endif
 
 namespace orchard::core::tensor {
 
