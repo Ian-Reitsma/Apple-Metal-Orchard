@@ -41,6 +41,7 @@ endif()
 
 target_include_directories(orchard_metal PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/metal)
 target_link_libraries(orchard_metal PUBLIC orchard_core)
+target_compile_definitions(orchard_metal PRIVATE ORCHARD_KERNEL_DIR="${CMAKE_CURRENT_SOURCE_DIR}/metal/kernels")
 if(APPLE)
   target_link_libraries(orchard_metal PUBLIC Metal::Metal objc)
 endif()

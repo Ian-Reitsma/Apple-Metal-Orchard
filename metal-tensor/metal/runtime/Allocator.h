@@ -57,11 +57,18 @@ private:
 inline MetalAllocator::MetalAllocator() {
 #ifdef __OBJC__
   device_ = MTLCreateSystemDefaultDevice();
+  if (!device_) {
+    orchard::tensor_profile_log("error missing Metal device");
+  }
 #endif
 }
 
 inline void *MetalAllocator::allocate(std::size_t bytes, const char *label) {
 #ifdef __OBJC__
+  if (!device_) {
+    orchard::tensor_profile_log("error missing Metal device");
+    return nullptr;
+  }
   id<MTLBuffer> buffer = nil;
   if (bytes > (16 << 20)) {
     const void *keys[] = {(const void *)kIOSurfaceWidth,
