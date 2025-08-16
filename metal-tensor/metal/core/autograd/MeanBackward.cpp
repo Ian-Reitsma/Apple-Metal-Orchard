@@ -20,7 +20,14 @@ void MeanBackward::apply(Tensor &g) {
     float v = *static_cast<float *>(g_cpu.data_ptr());
     v /= static_cast<float>(a.numel());
     if (g.device() == Device::mps) {
-      runtime::metal_fill(static_cast<float *>(grad.data_ptr()), v, a.numel());
+      try {
+        runtime::metal_fill(static_cast<float *>(grad.data_ptr()), v,
+                            a.numel());
+      } catch (const std::runtime_error &) {
+        auto *ptr = static_cast<float *>(grad.data_ptr());
+        for (std::size_t i = 0; i < a.numel(); ++i)
+          ptr[i] = v;
+      }
     } else {
       auto *ptr = static_cast<float *>(grad.data_ptr());
       for (std::size_t i = 0; i < a.numel(); ++i)

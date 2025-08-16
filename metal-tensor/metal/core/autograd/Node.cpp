@@ -4,6 +4,7 @@
 #include "../tensor/Tensor.h"
 
 #include <cstdint>
+#include <stdexcept>
 
 using namespace orchard::core::tensor;
 
@@ -26,11 +27,18 @@ void Node::accumulate(Tensor &t, const Tensor &grad) {
         break;
       ++dims;
     }
-    orchard::runtime::metal_add(static_cast<const float *>(grad.data_ptr()),
-                                static_cast<const float *>(t.grad().data_ptr()),
-                                static_cast<float *>(t.grad().data_ptr()),
-                                shape.data(), strides.data(), strides.data(),
-                                dims, n);
+    try {
+      orchard::runtime::metal_add(
+          static_cast<const float *>(grad.data_ptr()),
+          static_cast<const float *>(t.grad().data_ptr()),
+          static_cast<float *>(t.grad().data_ptr()), shape.data(),
+          strides.data(), strides.data(), dims, n);
+    } catch (const std::runtime_error &) {
+      orchard::runtime::cpu_context().add(
+          static_cast<const float *>(grad.data_ptr()),
+          static_cast<const float *>(t.grad().data_ptr()),
+          static_cast<float *>(t.grad().data_ptr()), n);
+    }
   } else {
     orchard::runtime::cpu_context().add(
         static_cast<const float *>(grad.data_ptr()),

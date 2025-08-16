@@ -17,9 +17,13 @@ void TransposeBackward::apply(Tensor &g) {
     out = gg.transpose(dim1, dim0).detach();
   } else {
     out = Tensor::empty(base.shape(), base.dtype(), pbase->device());
-    runtime::metal_transpose_backward(static_cast<const float *>(gg.data_ptr()),
-                                      static_cast<float *>(out.data_ptr()), m,
-                                      n);
+    try {
+      runtime::metal_transpose_backward(
+          static_cast<const float *>(gg.data_ptr()),
+          static_cast<float *>(out.data_ptr()), m, n);
+    } catch (const std::runtime_error &) {
+      out = gg.transpose(dim1, dim0).detach();
+    }
   }
   if (pbase->grad_fn() && pbase->grad_fn().get() != this)
     pbase->grad_fn()->apply(out);

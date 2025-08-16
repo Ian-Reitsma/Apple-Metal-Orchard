@@ -21,14 +21,38 @@ void MatmulBackward::apply(Tensor &g) {
   Tensor aa = a.to(dev);
   Tensor bb = b.to(dev);
   if (dev == Device::mps) {
-    runtime::metal_matmul_backward_a(static_cast<const float *>(g.data_ptr()),
-                                     static_cast<const float *>(bb.data_ptr()),
-                                     static_cast<float *>(ga.data_ptr()), m, n,
-                                     k);
-    runtime::metal_matmul_backward_b(static_cast<const float *>(g.data_ptr()),
-                                     static_cast<const float *>(aa.data_ptr()),
-                                     static_cast<float *>(gb.data_ptr()), m, n,
-                                     k);
+    try {
+      runtime::metal_matmul_backward_a(
+          static_cast<const float *>(g.data_ptr()),
+          static_cast<const float *>(bb.data_ptr()),
+          static_cast<float *>(ga.data_ptr()), m, n, k);
+      runtime::metal_matmul_backward_b(
+          static_cast<const float *>(g.data_ptr()),
+          static_cast<const float *>(aa.data_ptr()),
+          static_cast<float *>(gb.data_ptr()), m, n, k);
+    } catch (const std::runtime_error &) {
+      const auto *gp = static_cast<const float *>(g.data_ptr());
+      const auto *bp = static_cast<const float *>(bb.data_ptr());
+      const auto *ap = static_cast<const float *>(aa.data_ptr());
+      auto *gap = static_cast<float *>(ga.data_ptr());
+      auto *gbp = static_cast<float *>(gb.data_ptr());
+      for (std::size_t i = 0; i < static_cast<std::size_t>(m); ++i) {
+        for (std::size_t j = 0; j < static_cast<std::size_t>(k); ++j) {
+          float s = 0.0f;
+          for (std::size_t p = 0; p < static_cast<std::size_t>(n); ++p)
+            s += gp[i * n + p] * bp[j * n + p];
+          gap[i * k + j] = s;
+        }
+      }
+      for (std::size_t i = 0; i < static_cast<std::size_t>(k); ++i) {
+        for (std::size_t j = 0; j < static_cast<std::size_t>(n); ++j) {
+          float s = 0.0f;
+          for (std::size_t p = 0; p < static_cast<std::size_t>(m); ++p)
+            s += ap[p * k + i] * gp[p * n + j];
+          gbp[i * n + j] = s;
+        }
+      }
+    }
   } else {
     const auto *gp = static_cast<const float *>(g.data_ptr());
     const auto *bp = static_cast<const float *>(bb.data_ptr());

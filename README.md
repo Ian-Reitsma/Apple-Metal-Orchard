@@ -2,6 +2,12 @@
 
 `metal-orchard` is the incubation ground for Tensor v0, a tensor runtime and kernel stack engineered for Apple Silicon and the Metal application programming interface. The repository hosts every source file, test, and document required to construct the project; no external submodules are referenced.
 
+## Getting Started
+1. Install Xcode 15+, the Metal 4 SDK, and the command line tools so the build system can locate compilers and headers.
+2. Configure the project with `cmake -S . -B build -G Ninja` to generate build files in a separate `build/` directory.
+3. Compile targets by running `cmake --build build` which produces static libraries and the test binary.
+4. Execute `ctest --output-on-failure` inside `build/` to verify the runtime passes its unit tests.
+
 ## Repository Overview
 - `metal-tensor/` contains the primary library. Its `metal/` tree defines `Storage`, `Tensor`, `Node`, and auxiliary infrastructure, while `tests/` verifies contiguity semantics, host and device copies through `Tensor::to`, allocation profiling via `dump_live_tensors`, and gradient propagation using the `backward` routine.
 - `experimental/` carries the historical PyTorch bridge. Its `orchard_ops/` folder builds C++ and Python extension modules, `benchmarks/` and `tests/` exercise them under PyTorch, and `kernel_lib/` stores prebuilt FlashAttention binaries. The `data/` and `runs/` directories hold transient datasets and benchmark outputs and remain untracked by Git to avoid committing large artifacts. The bridge is disabled by default and only compiles when configuration passes -DORCHARD_BUILD_EXPERIMENTAL=ON and runtime sets USE_FLASH_ATTN to 2.
@@ -24,14 +30,8 @@
   is provided; see [docs/tensor.md](docs/tensor.md#elementwise-division) for
   details.
 
-## Building
-1. Install Xcode 15+, the Metal 4 SDK, and the command line tools.
-2. From the repository root run `cmake -S . -B build -G Ninja` to produce build files in the `build/` directory. CMake only queries the Metal SDK when `CMAKE_SYSTEM_NAME` is `Darwin`; other hosts receive a stub `Metal::Metal` target and build the CPU runtime. Pass `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to use the trimmed copy under `third_party/googletest` or a system package and keep configuration offline. The Ninja generator matches the GitHub Actions workflow.
-3. Invoke `cmake --build build` to compile the static libraries and unit tests. Pass `-DORCHARD_BUILD_EXPERIMENTAL=ON` during configuration to compile the legacy PyTorch bridge.
-4. Non-Apple hosts follow the same steps. Metal discovery is skipped by the `CMAKE_SYSTEM_NAME` check, Objective-C++ sources are excluded, `runtime_cpu.cpp` drives the runtime, and only `liborchard_core.a` is produced while profiling events remain logged. Capture any diagnostics and see docs/tensor.md#toolchain for details.
-
 ## Testing
-Run `cmake --build build --target check` to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks with matching alloc/free counts, and autograd gradients. CPU-only builds exercise transpose, matmul, mean, and sum backward paths to validate gradients without Metal. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
+Run `ctest --output-on-failure` from the `build/` directory to execute the suite under `metal-tensor/tests`. The tests cover CPU and Metal paths, queue reuse, profiling hooks with matching alloc/free counts, and autograd gradients. CPU-only builds exercise transpose, matmul, mean, and sum backward paths to validate gradients without Metal. Always attempt to configure and run tests before submitting a pull request. Even on systems lacking the Metal SDK, failing output is still valuable and should be reported in the pull request.
 
 ## Benchmarking
 Invoke `python benchmarks/run.py -o /tmp/bench` after building to capture kernel timings, hardware details, runtime flags, and whether Metal or CPU kernels executed. When `ORCHARD_TENSOR_PROFILE` is set the harness embeds allocator profiling lines from `/tmp/orchard_tensor_profile.log`, and setting `ORCHARD_FORCE_CPU=1` forces CPU-only runs. Results are written to `/tmp/bench/<commit>/benchmarks.json` where `<commit>` is the short Git hash. The harness exercises addition, multiplication, matmul, reduce_sum, mean, and transpose and enables reproducible comparisons across commits.
