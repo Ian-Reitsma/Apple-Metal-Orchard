@@ -28,14 +28,18 @@ TEST(FallbackTest, AccumulateFallsBackToCpu) {
   EXPECT_FLOAT_EQ(grad[1], 1.0f);
 }
 TEST(FallbackTest, CopyBuffersThrowsWithoutDevice) {
+  if (orchard::runtime::metal_context().has_device())
+    GTEST_SKIP() << "Metal device present; skipping CPU fallback test.";
   std::array<std::int64_t, 8> shape{1, 1, 1, 1, 1, 1, 1, 1};
   Tensor a = Tensor::empty(shape, DType::f32, Device::cpu);
   Tensor b = Tensor::empty(shape, DType::f32, Device::cpu);
   EXPECT_THROW(
       {
         try {
-          orchard::runtime::metal_copy_buffers(a.data_ptr(), b.data_ptr(),
-                                               sizeof(float));
+          orchard::runtime::metal_copy_buffers(
+              static_cast<orchard::runtime::MTLBufferRef>(a.data_ptr()),
+              static_cast<orchard::runtime::MTLBufferRef>(b.data_ptr()),
+              sizeof(float));
         } catch (const std::runtime_error &e) {
           EXPECT_STREQ("Metal device unavailable", e.what());
           throw;

@@ -380,16 +380,23 @@ Tensor Tensor::to(Device dev) const {
       else if (impl_->device == Device::cpu && dev == Device::mps) {
         if (!aligned64(src.data_ptr()))
           return Tensor{};
-        orchard::runtime::metal_copy_cpu_to_metal(t.impl_->storage->data,
-                                                  src.data_ptr(), bytes);
+        orchard::runtime::metal_copy_cpu_to_metal(
+            static_cast<orchard::runtime::MTLBufferRef>(t.impl_->storage->data),
+            src.data_ptr(), bytes);
       } else if (impl_->device == Device::mps && dev == Device::cpu) {
         if (!aligned64(t.data_ptr()))
           return Tensor{};
         orchard::runtime::metal_copy_metal_to_cpu(
-            t.data_ptr(), src.impl_->storage->data, bytes);
+            t.data_ptr(),
+            static_cast<orchard::runtime::MTLBufferRef>(
+                src.impl_->storage->data),
+            bytes);
       } else if (impl_->device == Device::mps && dev == Device::mps) {
-        orchard::runtime::metal_copy_buffers(t.impl_->storage->data,
-                                             src.impl_->storage->data, bytes);
+        orchard::runtime::metal_copy_buffers(
+            static_cast<orchard::runtime::MTLBufferRef>(t.impl_->storage->data),
+            static_cast<orchard::runtime::MTLBufferRef>(
+                src.impl_->storage->data),
+            bytes);
       } else {
         std::memcpy(t.data_ptr(), src.data_ptr(), bytes);
       }

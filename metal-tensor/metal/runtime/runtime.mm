@@ -8,6 +8,51 @@
 
 namespace orchard::runtime {
 
+MetalContext::MetalContext() {
+  device_ = MTLCreateSystemDefaultDevice();
+  device_missing_ = device_ == nil;
+}
+
+MTLDeviceRef MetalContext::device() const {
+  return device_missing_ ? nil : device_;
+}
+
+bool MetalContext::has_device() const { return !device_missing_; }
+
+MTLCommandQueueRef MetalContext::acquire_command_queue() {
+  if (device_missing_)
+    return nil;
+  if (!queue_pool_.empty()) {
+    id<MTLCommandQueue> queue = queue_pool_.back();
+    queue_pool_.pop_back();
+    return queue;
+  }
+  return [device_ newCommandQueue];
+}
+
+void MetalContext::return_command_queue(MTLCommandQueueRef queue) {
+  if (!device_missing_ && queue)
+    queue_pool_.push_back(queue);
+}
+
+MTLBlitCommandEncoderRef
+MetalContext::acquire_blit_encoder(MTLCommandQueueRef &queue,
+                                   MTLCommandBufferRef &cmdBuf) {
+  if (device_missing_) {
+    queue = nil;
+    cmdBuf = nil;
+    return nil;
+  }
+  queue = acquire_command_queue();
+  cmdBuf = [queue commandBuffer];
+  return [cmdBuf blitCommandEncoder];
+}
+
+MetalContext &metal_context() {
+  thread_local MetalContext ctx;
+  return ctx;
+}
+
 using ContextFactory = void *(*)();
 
 namespace {
@@ -38,15 +83,18 @@ void register_runtime_devices() {
 }
 
 #ifdef __APPLE__
-void metal_copy_buffers(void *dstBuf, const void *srcBuf, std::size_t bytes) {
+void metal_copy_buffers(MTLBufferRef dstBuf, MTLBufferRef srcBuf,
+                        std::size_t bytes) {
   MetalContext &ctx = metal_context();
+  if (!ctx.has_device())
+    throw std::runtime_error("Metal device unavailable");
   id<MTLCommandQueue> queue = nil;
   id<MTLCommandBuffer> cmd = nil;
   id<MTLBlitCommandEncoder> blit = ctx.acquire_blit_encoder(queue, cmd);
   if (!blit)
     throw std::runtime_error("Metal device unavailable");
-  id<MTLBuffer> dst = (__bridge id<MTLBuffer>)dstBuf;
-  id<MTLBuffer> src = (__bridge id<MTLBuffer>)(const_cast<void *>(srcBuf));
+  id<MTLBuffer> dst = dstBuf;
+  id<MTLBuffer> src = srcBuf;
   [blit copyFromBuffer:src
            sourceOffset:0
                toBuffer:dst
@@ -58,11 +106,12 @@ void metal_copy_buffers(void *dstBuf, const void *srcBuf, std::size_t bytes) {
   ctx.return_command_queue(queue);
 }
 
-void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
+void metal_copy_cpu_to_metal(MTLBufferRef dstBuf, const void *src,
+                             std::size_t bytes) {
   MetalContext &ctx = metal_context();
-  if (!ctx.device())
+  if (!ctx.has_device())
     throw std::runtime_error("Metal device unavailable");
-  id<MTLBuffer> dst = (__bridge id<MTLBuffer>)dstBuf;
+  id<MTLBuffer> dst = dstBuf;
   id<MTLBuffer> tmp =
       [ctx.device() newBufferWithBytes:src
                                 length:bytes
@@ -86,11 +135,12 @@ void metal_copy_cpu_to_metal(void *dstBuf, const void *src, std::size_t bytes) {
   [tmp release];
 }
 
-void metal_copy_metal_to_cpu(void *dst, const void *srcBuf, std::size_t bytes) {
+void metal_copy_metal_to_cpu(void *dst, MTLBufferRef srcBuf,
+                             std::size_t bytes) {
   MetalContext &ctx = metal_context();
-  if (!ctx.device())
+  if (!ctx.has_device())
     throw std::runtime_error("Metal device unavailable");
-  id<MTLBuffer> src = (__bridge id<MTLBuffer>)(const_cast<void *>(srcBuf));
+  id<MTLBuffer> src = srcBuf;
   id<MTLBuffer> tmp =
       [ctx.device() newBufferWithBytesNoCopy:dst
                                       length:bytes
