@@ -8,6 +8,28 @@
 #include <unordered_map>
 
 namespace orchard::runtime {
+MetalContext::MetalContext() = default;
+
+MTLDeviceRef MetalContext::device() const { return nullptr; }
+
+bool MetalContext::has_device() const { return false; }
+
+MTLCommandQueueRef MetalContext::acquire_command_queue() { return nullptr; }
+
+void MetalContext::return_command_queue(MTLCommandQueueRef) {}
+
+MTLBlitCommandEncoderRef
+MetalContext::acquire_blit_encoder(MTLCommandQueueRef &queue,
+                                   MTLCommandBufferRef &cmdBuf) {
+  queue = nullptr;
+  cmdBuf = nullptr;
+  return nullptr;
+}
+
+MetalContext &metal_context() {
+  thread_local MetalContext ctx;
+  return ctx;
+}
 
 using ContextFactory = void *(*)();
 
@@ -38,15 +60,15 @@ void register_runtime_devices() {
   register_device("cpu", []() -> void * { return &cpu_context(); });
 }
 
-void metal_copy_buffers(void *, const void *, std::size_t) {
+void metal_copy_buffers(MTLBufferRef, MTLBufferRef, std::size_t) {
   throw std::runtime_error("Metal device unavailable");
 }
 
-void metal_copy_cpu_to_metal(void *, const void *, std::size_t) {
+void metal_copy_cpu_to_metal(MTLBufferRef, const void *, std::size_t) {
   throw std::runtime_error("Metal device unavailable");
 }
 
-void metal_copy_metal_to_cpu(void *, const void *, std::size_t) {
+void metal_copy_metal_to_cpu(void *, MTLBufferRef, std::size_t) {
   throw std::runtime_error("Metal device unavailable");
 }
 

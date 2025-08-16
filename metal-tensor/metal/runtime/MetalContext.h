@@ -1,12 +1,8 @@
-// MetalContext.h
-// -------------------------------------------------------------
-// Thin wrapper around the system default Metal device. Each thread
-// receives its own context instance which keeps a pool of command
-// queues for reuse.
-
 #pragma once
 
 #include <vector>
+
+namespace orchard::runtime {
 
 #if defined(__APPLE__) && defined(__OBJC__)
 #include <Metal/Metal.h>
@@ -14,108 +10,33 @@ using MTLDeviceRef = id<MTLDevice>;
 using MTLCommandQueueRef = id<MTLCommandQueue>;
 using MTLCommandBufferRef = id<MTLCommandBuffer>;
 using MTLBlitCommandEncoderRef = id<MTLBlitCommandEncoder>;
+using MTLBufferRef = id<MTLBuffer>;
 #else
 using MTLDeviceRef = void *;
 using MTLCommandQueueRef = void *;
 using MTLCommandBufferRef = void *;
 using MTLBlitCommandEncoderRef = void *;
+using MTLBufferRef = void *;
 #endif
-
-namespace orchard::runtime {
 
 class MetalContext {
 public:
   MetalContext();
 
-#if defined(__APPLE__) && defined(__OBJC__)
-  /// Returns the underlying MTLDevice.
-  MTLDeviceRef device() const { return device_missing_ ? nil : device_; }
-  bool has_device() const { return !device_missing_; }
-#endif
+  MTLDeviceRef device() const;
+  bool has_device() const;
 
-  /// Acquire a command queue for the current thread.
   MTLCommandQueueRef acquire_command_queue();
-
-  /// Return a command queue to the thread‑local pool.
   void return_command_queue(MTLCommandQueueRef queue);
-
-  /// Acquire a blit command encoder along with its backing queue and
-  /// command buffer. The caller is responsible for ending encoding,
-  /// committing the command buffer and returning the queue.
   MTLBlitCommandEncoderRef acquire_blit_encoder(MTLCommandQueueRef &queue,
                                                 MTLCommandBufferRef &cmdBuf);
 
 private:
-#if defined(__APPLE__) && defined(__OBJC__)
-  MTLDeviceRef device_ = nil;
-  bool device_missing_ = false;
+  MTLDeviceRef device_ = MTLDeviceRef{};
+  bool device_missing_ = true;
   std::vector<MTLCommandQueueRef> queue_pool_;
-#else
-  [[maybe_unused]] MTLDeviceRef device_ = nullptr;
-  [[maybe_unused]] bool device_missing_ = true;
-  [[maybe_unused]] std::vector<MTLCommandQueueRef> queue_pool_;
-#endif
 };
 
-/// Obtain the Metal context associated with the calling thread.
 MetalContext &metal_context();
 
 } // namespace orchard::runtime
-
-// Inline implementations
-inline orchard::runtime::MetalContext::MetalContext() {
-#if defined(__APPLE__) && defined(__OBJC__)
-  device_ = MTLCreateSystemDefaultDevice();
-  device_missing_ = device_ == nil;
-#endif
-}
-
-inline MTLCommandQueueRef
-orchard::runtime::MetalContext::acquire_command_queue() {
-#if defined(__APPLE__) && defined(__OBJC__)
-  if (device_missing_)
-    return nil;
-  if (!queue_pool_.empty()) {
-    id<MTLCommandQueue> queue = queue_pool_.back();
-    queue_pool_.pop_back();
-    return queue;
-  }
-  return device_missing_ ? nil : [device_ newCommandQueue];
-#else
-  return nullptr;
-#endif
-}
-
-inline void
-orchard::runtime::MetalContext::return_command_queue(MTLCommandQueueRef queue) {
-#if defined(__APPLE__) && defined(__OBJC__)
-  if (!device_missing_ && queue)
-    queue_pool_.push_back(queue);
-#else
-  (void)queue;
-#endif
-}
-
-inline MTLBlitCommandEncoderRef
-orchard::runtime::MetalContext::acquire_blit_encoder(
-    MTLCommandQueueRef &queue, MTLCommandBufferRef &cmdBuf) {
-#if defined(__APPLE__) && defined(__OBJC__)
-  if (device_missing_) {
-    queue = nil;
-    cmdBuf = nil;
-    return nil;
-  }
-  queue = acquire_command_queue();
-  cmdBuf = [queue commandBuffer];
-  return [cmdBuf blitCommandEncoder];
-#else
-  (void)queue;
-  (void)cmdBuf;
-  return nullptr;
-#endif
-}
-
-inline orchard::runtime::MetalContext &orchard::runtime::metal_context() {
-  thread_local MetalContext ctx;
-  return ctx;
-}
